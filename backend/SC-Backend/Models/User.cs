@@ -16,7 +16,7 @@ namespace SC_Backend.Models
 
         [Required]
         [Column("Email")]
-        [MaxLength(100)]
+        [MaxLength(60)]
         [EmailAddress]
         public string Email { get; set; }
 
