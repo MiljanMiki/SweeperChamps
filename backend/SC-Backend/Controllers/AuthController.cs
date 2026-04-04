@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using SC_Backend.Models;
+using SC_Backend.DataModels;
 using SC_Backend.DTOs;
+using SC_Backend.DataContext;
+using SC_Backend.Services;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace SC_Backend.Controllers;
@@ -24,11 +27,11 @@ namespace SC_Backend.Controllers;
                 return BadRequest(ModelState);
 
             // Provera da li username postoji
-            if (await _context.Korisnici.AnyAsync(u => u.Username == registerDto.Username))
+            if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
                 return BadRequest(new { message = "Username već postoji" });
 
             // Provera da li email postoji
-            if (await _context.Korisnici.AnyAsync(u => u.Email == registerDto.Email))
+            if (await _context.Users.AnyAsync(u => u.Email == registerDto.Email))
                 return BadRequest(new { message = "Email već postoji" });
 
             // Kreiranje korisnika
@@ -36,19 +39,19 @@ namespace SC_Backend.Controllers;
             {
                 Username = registerDto.Username,
                 Email = registerDto.Email,
-                PasswordHash = _authService.HashPassword(registerDto.Password),
-                Role = UserRoles.User,
-                CreatedAt = DateTime.UtcNow,
-                SlikaURL = registerDto.SlikaURL
+                //PasswordHash = _authService.HashPassword(registerDto.Password),
+                UserRole = UserRoles.User,
+                Datecreated = DateOnly.FromDateTime(DateTime.Now),
+                //SlikaURL = registerDto.SlikaURL
             };
 
             // Prvi korisnik postaje admin
-            if (!await _context.Korisnici.AnyAsync())
+            if (!await _context.Users.AnyAsync())
             {
-                user.Role = UserRoles.Admin;
+                user.UserRole = UserRoles.Admin;
             }
 
-            _context.Korisnici.Add(user);
+            _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
             // Generisanje tokena
@@ -60,11 +63,11 @@ namespace SC_Backend.Controllers;
                 Expires = DateTime.UtcNow.AddHours(24),
                 User = new UserInfoDto
                 {
-                    Id = user.ID,
+                    Id = user.UsersId,
                     Username = user.Username,
                     Email = user.Email,
-                    Elo = user.Elo,
-                    CreatedAt = user.CreatedAt
+                    Elo = user.Elo ?? 0,
+                    CreatedAt = user.Datecreated
                 }
             };
 
@@ -78,14 +81,14 @@ namespace SC_Backend.Controllers;
                 return BadRequest(ModelState);
 
             // Pronalaženje korisnika po username ili email
-            var korisnik = await _context.Korisnici
+            var korisnik = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username == loginDto.Username || u.Email == loginDto.Username);
 
             if (korisnik == null)
                 return Unauthorized(new { message = "Pogrešno korisničko ime ili lozinka" });
 
-            if (!_authService.VerifyPassword(loginDto.Password, korisnik.PasswordHash))
-                return Unauthorized(new { message = "Pogrešno korisničko ime ili lozinka" });
+            //if (!_authService.VerifyPassword(loginDto.Password, korisnik.PasswordHash))
+              //  return Unauthorized(new { message = "Pogrešno korisničko ime ili lozinka" });
 
             // Generisanje tokena
             var token = _authService.GenerateJwtToken(korisnik);
@@ -96,12 +99,12 @@ namespace SC_Backend.Controllers;
                 Expires = DateTime.UtcNow.AddHours(24),
                 User = new UserInfoDto
                 {
-                    Id = korisnik.ID,
+                    Id = korisnik.UsersId,
                     Username = korisnik.Username,
                     Email = korisnik.Email,
-                    CreatedAt = korisnik.CreatedAt,
-                    Elo = korisnik.Elo,
-                    SlikaUrl = korisnik.SlikaURL
+                    CreatedAt = korisnik.Datecreated,
+                    Elo = korisnik.Elo ?? 0,
+                    //SlikaUrl = korisnik.SlikaURL
                 }
             };
 

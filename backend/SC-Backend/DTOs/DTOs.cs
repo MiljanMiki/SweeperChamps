@@ -14,8 +14,8 @@ namespace SC_Backend.DTOs
         public int Id { get; set; }
         public string Username { get; set; }
         public string Email { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public int Elo { get; set; }
+        public DateOnly CreatedAt { get; set; }
+        public short Elo { get; set; }
         public string SlikaUrl { get; set; }
     }
     public class RegisterDto
@@ -45,7 +45,7 @@ namespace SC_Backend.DTOs
         public string Role { get; set; } = "User";
 
         [Column("CreatedAt")]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateOnly CreatedAt { get; set; } = DateOnly.FromDateTime(DateTime.Today);
 
         [Column("Elo")]
         public int Elo { get; set; }

@@ -2,8 +2,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using SC_Backend.DataModels;
 
-namespace SC_Backend.Models
+namespace SC_Backend.Services
 {
     public interface IAuthService
     {
@@ -29,10 +30,10 @@ namespace SC_Backend.Models
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, korisnik.ID.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, korisnik.UsersId.ToString()),
                 new Claim(ClaimTypes.Name, korisnik.Username),
                 new Claim(ClaimTypes.Email, korisnik.Email),
-                new Claim(ClaimTypes.Role, korisnik.Role)
+                new Claim(ClaimTypes.Role, korisnik.UserRole)
             };
 
             var token = new JwtSecurityToken(
