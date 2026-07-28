@@ -35,6 +35,9 @@ public partial class User
 
     [InverseProperty("Player")]
     public virtual ICollection<GamePlayer> GamePlayers { get; set; } = new List<GamePlayer>();
+
+    [InverseProperty("User")]
+    public virtual ICollection<UserStats> UserStats { get; set; } = new List<UserStats>();
 }
 
 public static class UserRoles

@@ -25,8 +25,12 @@ public partial class Game
     [InverseProperty("Game")]
     public virtual ICollection<GamePlayer> GamePlayers { get; set; } = new List<GamePlayer>();
 
-    [InverseProperty("Game")]
-    public virtual ICollection<GameSetting> GameSettings { get; set; } = new List<GameSetting>();
+
+    [Column("game_settings_id")]
+    public int GameSettingsId { get; set; }
+
+    [ForeignKey("GameSettingsId")]
+    public virtual GameSetting GameSettings { get; set; } = null!;
 
     [InverseProperty("Game")]
     public virtual ICollection<Move> Moves { get; set; } = new List<Move>();
