@@ -33,7 +33,7 @@ namespace SC_Backend.Services
                 new Claim(ClaimTypes.NameIdentifier, korisnik.UsersId.ToString()),
                 new Claim(ClaimTypes.Name, korisnik.Username),
                 new Claim(ClaimTypes.Email, korisnik.Email),
-                new Claim(ClaimTypes.Role, korisnik.UserRole)
+                new Claim(ClaimTypes.Role, korisnik.UserRole.ToString())
             };
 
             var token = new JwtSecurityToken(

@@ -27,7 +27,7 @@ public partial class User
 
     [Column("user_role")]
     [StringLength(20)]
-    public string? UserRole { get; set; }
+    public UserRoles? UserRole { get; set; }
 
     [Key]
     [Column("users_id")]
@@ -40,8 +40,10 @@ public partial class User
     public virtual ICollection<UserStats> UserStats { get; set; } = new List<UserStats>();
 }
 
-public static class UserRoles
+public enum UserRoles
 {
-    public const string Admin = "Admin";
-    public const string User = "User";
+    NotSet = 0,
+    User = 10,
+    Admin = 20,
 }
+

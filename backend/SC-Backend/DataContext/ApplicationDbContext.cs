@@ -84,12 +84,14 @@ public partial class ApplicationDbContext : DbContext
         modelBuilder.Entity<GameSetting>(entity =>
             entity.ToTable("game_settings", tb =>
             {
-                tb.HasCheckConstraint("CK_game_settings_win_condition","win_condition IN ('Race','TimeRush')");
-                tb.HasCheckConstraint("CK_game_settings_width", "width >= 9 AND width <= 30 ");
-                tb.HasCheckConstraint("CK_game_settings_height", "height >= 9 AND height <= 24");
-                tb.HasCheckConstraint("CK_game_settings_number_of_mines", "number_of_mines >= 10 AND number_of_mines <= 130");
-                tb.HasCheckConstraint("CK_game_settings_start_time_seconds", "start_time_seconds >=");
-                tb.HasCheckConstraint("CK_game_settings_", "");
+                tb.HasCheckConstraint("CK_game_settings_width", "width >= 9 AND width <= 50 ");
+                tb.HasCheckConstraint("CK_game_settings_height", "height >= 9 AND height <= 50");
+                tb.HasCheckConstraint("CK_game_settings_number_of_mines", "number_of_mines >= 10 AND number_of_mines <= 500");
+                tb.HasCheckConstraint("CK_game_settings_start_time_seconds", "start_time_seconds IS NULL OR (start_time_seconds >= 30 AND start_time_seconds <= 1200)");//max 20 minuta
+                tb.HasCheckConstraint("CK_game_settings_team_size", "team_size >= 1 AND team_size <= 3");
+                tb.HasCheckConstraint("CK_game_settings_win_condition", "win_condition IN ('Race','TimeRush')");
+
+                tb.HasCheckConstraint("CK_game_settings_mines_fit", "number_of_mines < (width * height)");
             })
         );
 
@@ -107,10 +109,21 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.UsersId).HasName("users_pkey");
 
             entity.Property(e => e.Elo).HasDefaultValue((short)0);
-            entity.Property(e => e.UserRole).HasDefaultValueSql("'User'::character varying");
+            entity.Property(e => e.UserRole).HasConversion<string>();
+            entity.Property(e => e.UserRole).HasDefaultValueSql("'NotSet'::character varying");
         });
 
-        modelBuilder.Entity<UserStats>(entity =>
+        modelBuilder.Entity<User>(entity =>
+            entity.ToTable("users",tb=>
+            {
+                tb.HasCheckConstraint("CK_users_email", "email LIKE '%@%.%'");
+                //tb.HasCheckConstraint("CK_users_datecreated", "datecreated");
+                tb.HasCheckConstraint("CK_users_elo", "elo >=0 AND elo <=  32767"); //32767 je max za smallint
+                tb.HasCheckConstraint("CK_users_user_role", "user_role IN ('NotSet','User','Admin')");
+            })
+        );
+
+       modelBuilder.Entity<UserStats>(entity =>
         {
             entity.HasKey(e => new { e.GameSettingId, e.UserId, e.IsRanked });
 
