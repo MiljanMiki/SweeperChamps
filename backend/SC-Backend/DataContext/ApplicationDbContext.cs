@@ -46,6 +46,8 @@ public partial class ApplicationDbContext : DbContext
         modelBuilder.Entity<Game>(entity =>
         {
             entity.HasKey(e => e.GamesId).HasName("games_pkey");
+
+            entity.Property(e => e.Status).HasConversion<string>();
         });
 
         modelBuilder.Entity<GamePlayer>(entity =>

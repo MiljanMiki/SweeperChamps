@@ -3,13 +3,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SC_Backend.DTOs
 {
-    public class LoginResponseDto
+    public record LoginResponseDto
     {
         public string Token { get; set; }
         public DateTime Expires { get; set; }
         public UserInfoDto User { get; set; }
     }
-    public class UserInfoDto
+    public record UserInfoDto
     {
         public int Id { get; set; }
         public string Username { get; set; }
@@ -18,7 +18,7 @@ namespace SC_Backend.DTOs
         public short Elo { get; set; }
         public string SlikaUrl { get; set; }
     }
-    public class RegisterDto
+    public record RegisterDto
     {
         [Key]
         [Column("ID")]
@@ -51,7 +51,7 @@ namespace SC_Backend.DTOs
         public int Elo { get; set; }
         public string SlikaURL { get; set; }
     }
-    public class LoginDto
+    public record LoginDto
     {
         [Required]
         public string Username { get; set; }

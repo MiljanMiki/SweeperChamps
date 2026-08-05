@@ -35,6 +35,8 @@ public partial class GameSetting
 
     [Column("has_powerups")]
     public bool HasPowerUps { get; set; } // true (Custom), false (Classic)
+
+    //nisam stavio inverseproperty na game a trebalo bi
 }
 
 public enum WinConditions
