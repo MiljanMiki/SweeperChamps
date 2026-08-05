@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
+using SC_Backend.DTOs.Games;
 
 namespace SC_Backend.Controllers
 {
@@ -21,16 +22,26 @@ namespace SC_Backend.Controllers
             _context = context;
         }
 
+        #region CRUD
         // GET: api/Games
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Game>>> GetGamesAsync()
+        public async Task<ActionResult<IEnumerable<GetGameDto>>> GetGamesAsync()
         {
-            return await _context.Games.ToListAsync();
+            var listGames = await _context.Games.ToListAsync();
+
+            return listGames.Select(game => new GetGameDto
+            {
+                GamesId = game.GamesId,
+                StartTime = game.StartTime,
+                EndTime = game.EndTime,
+                Status = game.Status,
+                GameSettingsId = game.GameSettingsId
+            }).ToList();
         }
 
         // GET: api/Games/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Game>> GetGameAsync(int id)
+        public async Task<ActionResult<GetGameDto>> GetGameAsync(int id)
         {
             var game = await _context.Games.FindAsync(id);
 
@@ -39,20 +50,28 @@ namespace SC_Backend.Controllers
                 return NotFound();
             }
 
-            return game;
+            return new GetGameDto {
+                GamesId = game.GamesId,
+                StartTime = game.StartTime, 
+                EndTime = game.EndTime,
+                Status = game.Status,
+                GameSettingsId = game.GameSettingsId
+            };
         }
 
         // PUT: api/Games/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutGameAsync(int id, Game game)
+        public async Task<IActionResult> PutGameAsync(int id,PutGameDto dto)
         {
-            if (id != game.GamesId)
-            {
-                return BadRequest();
-            }
+            var game = await _context.Games.FindAsync(id);
+            if (game == null)
+                return BadRequest("Game sa zadatim id-jem ne postoji");
 
             _context.Entry(game).State = EntityState.Modified;
+
+            game.EndTime = dto.EndTime;
+            game.Status = dto.Status;
 
             try
             {
@@ -76,12 +95,24 @@ namespace SC_Backend.Controllers
         // POST: api/Games
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Game>> PostGameAsync(Game game)
+        public async Task<ActionResult<Game>> PostGameAsync(PostGameDto dto)
         {
+            var settings = await _context.GameSettings.FindAsync(dto.GameSettingsId);
+            if (settings == null)
+                return BadRequest("GameSettings sa datim id-jem ne postoji");
+
+            var game = new Game
+            {
+                StartTime = dto.StartTime,
+                EndTime = dto.EndTime,
+                Status = dto.Status,
+                GameSettingsId = dto.GameSettingsId,
+            };
             _context.Games.Add(game);
+
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetGame", new { id = game.GamesId }, game);
+            return CreatedAtAction("GetGameAsync", new { id = game.GamesId }, game);
         }
 
         // DELETE: api/Games/5
@@ -99,6 +130,8 @@ namespace SC_Backend.Controllers
 
             return NoContent();
         }
+
+        #endregion CRUD
 
         private bool GameExists(int id)
         {

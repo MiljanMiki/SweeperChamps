@@ -25,7 +25,6 @@ public partial class Game
     [InverseProperty("Game")]
     public virtual ICollection<GamePlayer> GamePlayers { get; set; } = new List<GamePlayer>();
 
-
     [Column("game_settings_id")]
     public int GameSettingsId { get; set; }
 
@@ -40,8 +39,8 @@ public partial class Game
 public enum GameStatuses
 { 
     Finished = 0,
-    Aborted = 10, //korisnici su matchovani ali nije uspesno postavljena konekcija ili su odustali u prvih 1/2 poteza
-    Terminated = 20,//jedan od korisnika je banovan u toku partije i ona je nevazeca
-    InProgress = 30
+    InProgress = 10,
+    Aborted = 20, //korisnici su matchovani ali nije uspesno postavljena konekcija ili su odustali u prvih 1/2 poteza
+    Terminated = 30//jedan od korisnika je banovan u toku partije i ona je nevazeca
 }
 

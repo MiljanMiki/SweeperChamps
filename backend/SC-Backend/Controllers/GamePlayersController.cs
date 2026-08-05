@@ -25,6 +25,7 @@ namespace SC_Backend.Controllers
 
         #region CRUD
         // GET: api/GamePlayers
+        //PROMENI U DTO
         [HttpGet]
         public async Task<ActionResult<IEnumerable<GamePlayer>>> GetGamePlayersAsync()
         {
@@ -32,6 +33,7 @@ namespace SC_Backend.Controllers
         }
 
         // GET: api/GamePlayers/5
+        //PROMENI U DTO
         [HttpGet("{id}")]
         public async Task<ActionResult<GamePlayer>> GetGamePlayerAsync(int id)
         {
