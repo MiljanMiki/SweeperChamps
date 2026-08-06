@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SC_Backend.DTOs.Games
 {
-    public record GetGameDto
+    public record GameDto
     {
         public int GamesId { get; set; }
 

@@ -25,11 +25,11 @@ namespace SC_Backend.Controllers
         #region CRUD
         // GET: api/Games
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<GetGameDto>>> GetGamesAsync()
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetGamesAsync()
         {
             var listGames = await _context.Games.ToListAsync();
 
-            return listGames.Select(game => new GetGameDto
+            return listGames.Select(game => new GameDto
             {
                 GamesId = game.GamesId,
                 StartTime = game.StartTime,
@@ -41,7 +41,7 @@ namespace SC_Backend.Controllers
 
         // GET: api/Games/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<GetGameDto>> GetGameAsync(int id)
+        public async Task<ActionResult<GameDto>> GetGameAsync(int id)
         {
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0");
@@ -53,7 +53,7 @@ namespace SC_Backend.Controllers
                 return NotFound();
             }
 
-            return new GetGameDto {
+            return new GameDto {
                 GamesId = game.GamesId,
                 StartTime = game.StartTime, 
                 EndTime = game.EndTime,
@@ -75,7 +75,9 @@ namespace SC_Backend.Controllers
                 return BadRequest($"Game with ID {id} doesnt exist.");
 
             if (dto.EndTime < game.StartTime)
-                return BadRequest("Game cannot end before it started.");
+                return BadRequest("Invalid date: a game cannot end before it started.");
+            if (dto.EndTime == null && (dto.Status == GameStatuses.Finished || game.Status == GameStatuses.Finished))
+                return BadRequest("Invalid date: a game that has ended must have an end time.");
 
             _context.Entry(game).State = EntityState.Modified;
 
@@ -110,6 +112,9 @@ namespace SC_Backend.Controllers
                 return BadRequest("ID cannot be negative or 0");
             if (dto.EndTime < dto.StartTime)
                 return BadRequest("Game cannot end before it started.");
+
+            if (dto.EndTime == null && dto.Status == GameStatuses.Finished)
+                return BadRequest("Game that has ended must have an end time.");
 
             var settings = await _context.GameSettings.FindAsync(dto.GameSettingsId);
             if (settings == null)
@@ -149,6 +154,63 @@ namespace SC_Backend.Controllers
         }
 
         #endregion CRUD
+
+        ///  <summary>
+        /// Filters games based on status and the date of the start of the game. If date is omitted, it will be filtered only by status.
+        /// If date is not omitted then one of day,month or year parameters must be set to true or BadRequest is returned. Only the first parameter set 
+        /// to true is considered in the query.
+        /// </summary>
+        /// <param name="status">Current status of the game.</param>
+        /// <param name="date">Date by which the games will be filtered. If none of the following parameters is not set to true the query returns BadRequest: day, month, year</param>
+        /// <param name="day">If set to true games will be filtered by day only. Month and year will not be considered</param>
+        /// <param name="month">If set to true games will be filtered by month only.Day and year will not be considered</param>
+        /// <param name="year">If set to true games will be filtered by year only. Day and month will not be considered</param>
+        /// <returns>All games that satisfy the criteria.</returns>
+        public async Task<ActionResult<IEnumerable<GameDto>>> FilterGameByStatusAndDate(GameStatuses status,DateTime? date = null,bool day=false,bool month=false,bool year=false)
+        {
+            var query = _context.Games.Where(g => g.Status == status);
+
+            if(date != null)
+            {
+                if (day)
+                    query = query.Where(g => g.StartTime.Date == date.Value.Date);
+                else if (month)
+                    query = query.Where(g => g.StartTime.Month == date.Value.Month);
+                else if (year)
+                    query = query.Where(g => g.StartTime.Year == date.Value.Year);
+                else
+                    return BadRequest("Day, month or year must be specified for date filtering.");
+            }
+
+            return await query.Select(g => new GameDto
+            {
+                GamesId = g.GamesId,
+                StartTime = g.StartTime,
+                EndTime = g.EndTime,
+                Status = g.Status,
+                GameSettingsId = g.GameSettingsId
+            }).ToListAsync();
+        }
+
+        public async Task<ActionResult<IEnumerable<GameDto>>> FilterByDuration(int durationSeconds, bool longer)
+        {
+            if (durationSeconds <= 0)
+                return BadRequest("Game duration must be longer than 0 seconds");
+
+            var query = _context.Games.Where(g => g.Status == GameStatuses.Finished && g.EndTime != null);//za svaki slucaj i null check
+            query = longer ?
+                query.Where(g => (g.EndTime!.Value - g.StartTime).TotalSeconds > durationSeconds) :
+                query.Where(g => (g.EndTime!.Value - g.StartTime).TotalSeconds <= durationSeconds);
+
+            return await query.Select(g => new GameDto
+            {
+                GamesId = g.GamesId,
+                StartTime = g.StartTime,
+                EndTime = g.EndTime,
+                Status = g.Status,
+                GameSettingsId = g.GameSettingsId
+            }).ToListAsync();
+        }
 
         private bool GameExists(int id)
         {
