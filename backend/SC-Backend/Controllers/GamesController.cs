@@ -76,10 +76,11 @@ namespace SC_Backend.Controllers
 
             if (dto.EndTime < game.StartTime)
                 return BadRequest("Invalid date: a game cannot end before it started.");
-            if (dto.EndTime == null && (dto.Status == GameStatuses.Finished || game.Status == GameStatuses.Finished))
+            if (dto.EndTime == null && (dto.Status == GameStatuses.Finished || dto.Status == GameStatuses.Terminated))
                 return BadRequest("Invalid date: a game that has ended must have an end time.");
+            if(dto.EndTime != null && (dto.Status == GameStatuses.Aborted || dto.Status == GameStatuses.InProgress))
+                return BadRequest("A game that has not ended correctly cannot have end time.");
 
-            _context.Entry(game).State = EntityState.Modified;
 
             game.EndTime = dto.EndTime;
             game.Status = dto.Status;
@@ -113,8 +114,10 @@ namespace SC_Backend.Controllers
             if (dto.EndTime < dto.StartTime)
                 return BadRequest("Game cannot end before it started.");
 
-            if (dto.EndTime == null && dto.Status == GameStatuses.Finished)
+            if (dto.EndTime == null && dto.Status == GameStatuses.Finished && dto.Status == GameStatuses.Terminated)
                 return BadRequest("Game that has ended must have an end time.");
+            if (dto.EndTime != null && (dto.Status == GameStatuses.Aborted || dto.Status == GameStatuses.InProgress))
+                return BadRequest("A game that has not ended correctly cannot have end time.");
 
             var settings = await _context.GameSettings.FindAsync(dto.GameSettingsId);
             if (settings == null)
@@ -131,7 +134,7 @@ namespace SC_Backend.Controllers
 
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetGameAsync", new { id = game.GamesId }, game);
+            return CreatedAtAction(nameof(GetGameAsync), new { id = game.GamesId }, game);
         }
 
         // DELETE: api/Games/5
@@ -166,6 +169,8 @@ namespace SC_Backend.Controllers
         /// <param name="month">If set to true games will be filtered by month only.Day and year will not be considered</param>
         /// <param name="year">If set to true games will be filtered by year only. Day and month will not be considered</param>
         /// <returns>All games that satisfy the criteria.</returns>
+        /// 
+        [HttpGet("filter")]
         public async Task<ActionResult<IEnumerable<GameDto>>> FilterGameByStatusAndDate(GameStatuses status,DateTime? date = null,bool day=false,bool month=false,bool year=false)
         {
             var query = _context.Games.Where(g => g.Status == status);
@@ -192,6 +197,7 @@ namespace SC_Backend.Controllers
             }).ToListAsync();
         }
 
+        [HttpGet("duration/{durationSeconds}")]
         public async Task<ActionResult<IEnumerable<GameDto>>> FilterByDuration(int durationSeconds, bool longer)
         {
             if (durationSeconds <= 0)
@@ -199,8 +205,8 @@ namespace SC_Backend.Controllers
 
             var query = _context.Games.Where(g => g.Status == GameStatuses.Finished && g.EndTime != null);//za svaki slucaj i null check
             query = longer ?
-                query.Where(g => (g.EndTime!.Value - g.StartTime).TotalSeconds > durationSeconds) :
-                query.Where(g => (g.EndTime!.Value - g.StartTime).TotalSeconds <= durationSeconds);
+                query.Where(g => EF.Functions.DateDiffSecond(g.StartTime, g.EndTime) > durationSeconds) :
+                query.Where(g => EF.Functions.DateDiffSecond(g.StartTime, g.EndTime) <= durationSeconds);
 
             return await query.Select(g => new GameDto
             {

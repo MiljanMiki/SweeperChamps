@@ -71,7 +71,7 @@ namespace SC_Backend.Controllers
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0");
             if (gamePlayerDto.Score < 0)
-                return BadRequest("Score cannot be negative or 0");
+                return BadRequest("Score cannot be negative");
 
             var gamePlayer = await _context.GamePlayers.FindAsync(id);
 
@@ -79,8 +79,6 @@ namespace SC_Backend.Controllers
             {
                 return BadRequest($"Game player with ID {id} doesnt exist.");
             }
-
-            _context.Entry(gamePlayerDto).State = EntityState.Modified;
 
             gamePlayer.Score = gamePlayerDto.Score;
             gamePlayer.TeamColor = gamePlayerDto.TeamColor;
@@ -113,7 +111,7 @@ namespace SC_Backend.Controllers
                 return BadRequest("ID of player cannot be negative or 0.");
             if (gamePlayerDto.GameId <= 0)
                 return BadRequest("ID of game cannot be negative or 0.");
-            if (gamePlayerDto.Score <= 0)
+            if (gamePlayerDto.Score < 0)
                 return BadRequest("Score cannot be negative.");
 
             if (!ModelState.IsValid)
@@ -163,7 +161,7 @@ namespace SC_Backend.Controllers
 
         #endregion CRUD
 
-        [HttpGet]
+        [HttpGet("game/{gameId}")]
         public async Task<ActionResult<IEnumerable<PlayerSummaryDto>>> GetAllPlayersFromGame(int gameId)
         {
             if (gameId <= 0)
@@ -196,7 +194,7 @@ namespace SC_Backend.Controllers
             return listaIgraca;
         }
 
-        [HttpGet]
+        [HttpGet("player/{playerId}")]
         public async Task<ActionResult<IEnumerable<GameSummaryDto>>> GetAllGamesFromPlayer(int playerId, bool orderByScore = false)
         {
             if (playerId <= 0)
@@ -223,7 +221,7 @@ namespace SC_Backend.Controllers
 
             return await query.ToListAsync();
         }
-
+        [HttpGet("head-to-head")]
         public async Task<ActionResult<IEnumerable<AllGamesTwoPlayersRequestDto>>> GamesBetweenTwoPlayers(int pId1, int pId2)
         {
             if (pId1 <= 0 || pId2 <= 0)
