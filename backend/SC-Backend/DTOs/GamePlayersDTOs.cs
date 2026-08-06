@@ -14,7 +14,7 @@ namespace SC_Backend.DTOs.GamePlayers
         public int Score { get; set; }
     }
 
-    public record PostGamePlayerRequestDto
+    public record GamePlayerDto
     {
         public int GameId { get; set; }
 

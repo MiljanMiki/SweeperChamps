@@ -27,15 +27,22 @@ namespace SC_Backend.Controllers
         // GET: api/GamePlayers
         //PROMENI U DTO
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<GamePlayer>>> GetGamePlayersAsync()
+        public async Task<ActionResult<IEnumerable<GamePlayerDto>>> GetGamePlayersAsync()
         {
-            return await _context.GamePlayers.ToListAsync();
+            var list = await _context.GamePlayers.ToListAsync();
+            return list.Select(gamePlayer => new GamePlayerDto
+            {
+                PlayerId = gamePlayer.PlayerId,
+                GameId = gamePlayer.GameId,
+                TeamColor = gamePlayer.TeamColor,
+                Score = gamePlayer.Score
+            }).ToList();
         }
 
         // GET: api/GamePlayers/5
         //PROMENI U DTO
         [HttpGet("{id}")]
-        public async Task<ActionResult<GamePlayer>> GetGamePlayerAsync(int id)
+        public async Task<ActionResult<GamePlayerDto>> GetGamePlayerAsync(int id)
         {
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0");
@@ -47,7 +54,13 @@ namespace SC_Backend.Controllers
                 return NotFound();
             }
 
-            return gamePlayer;
+            return new GamePlayerDto
+            {
+                PlayerId=gamePlayer.PlayerId,
+                GameId = gamePlayer.GameId,
+                TeamColor=gamePlayer.TeamColor,
+                Score=gamePlayer.Score
+            };
         }
 
         // PUT: api/GamePlayers/5
@@ -64,7 +77,7 @@ namespace SC_Backend.Controllers
 
             if (gamePlayer == null)
             {
-                return BadRequest();
+                return BadRequest($"Game player with ID {id} doesnt exist.");
             }
 
             _context.Entry(gamePlayerDto).State = EntityState.Modified;
@@ -94,7 +107,7 @@ namespace SC_Backend.Controllers
         // POST: api/GamePlayers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<GamePlayer>> PostGamePlayerAsync(PostGamePlayerRequestDto gamePlayerDto)
+        public async Task<ActionResult<GamePlayer>> PostGamePlayerAsync(GamePlayerDto gamePlayerDto)
         {
             if (gamePlayerDto.PlayerId <= 0)
                 return BadRequest("ID of player cannot be negative or 0.");
