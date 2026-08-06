@@ -18,7 +18,7 @@ namespace SC_Backend.DTOs.Games
 
     public record PutGameDto
     {
-        public DateTime EndTime { get; set; }
+        public DateTime? EndTime { get; set; }
 
         public GameStatuses Status { get; set; }
     }
@@ -26,7 +26,7 @@ namespace SC_Backend.DTOs.Games
     public record PostGameDto
     {
         public DateTime StartTime { get; set; }
-        public DateTime EndTime { get; set; }
+        public DateTime? EndTime { get; set; }
 
         public GameStatuses Status { get; set; }
         public int GameSettingsId { get; set; }

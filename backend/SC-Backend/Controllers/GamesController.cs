@@ -43,6 +43,9 @@ namespace SC_Backend.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<GetGameDto>> GetGameAsync(int id)
         {
+            if (id <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
             var game = await _context.Games.FindAsync(id);
 
             if (game == null)
@@ -64,9 +67,15 @@ namespace SC_Backend.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutGameAsync(int id,PutGameDto dto)
         {
+            if (id <= 0)
+                return BadRequest("ID cannot be negative or 0.");
+
             var game = await _context.Games.FindAsync(id);
             if (game == null)
-                return BadRequest("Game sa zadatim id-jem ne postoji");
+                return BadRequest($"Game with ID {id} doesnt exist.");
+
+            if (dto.EndTime < game.StartTime)
+                return BadRequest("Game cannot end before it started.");
 
             _context.Entry(game).State = EntityState.Modified;
 
@@ -97,6 +106,11 @@ namespace SC_Backend.Controllers
         [HttpPost]
         public async Task<ActionResult<Game>> PostGameAsync(PostGameDto dto)
         {
+            if (dto.GameSettingsId <= 0)
+                return BadRequest("ID cannot be negative or 0");
+            if (dto.EndTime < dto.StartTime)
+                return BadRequest("Game cannot end before it started.");
+
             var settings = await _context.GameSettings.FindAsync(dto.GameSettingsId);
             if (settings == null)
                 return BadRequest("GameSettings sa datim id-jem ne postoji");
@@ -119,6 +133,9 @@ namespace SC_Backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteGameAsync(int id)
         {
+            if (id <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
             var game = await _context.Games.FindAsync(id);
             if (game == null)
             {

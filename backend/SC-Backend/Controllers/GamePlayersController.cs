@@ -37,6 +37,9 @@ namespace SC_Backend.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<GamePlayer>> GetGamePlayerAsync(int id)
         {
+            if (id <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
             var gamePlayer = await _context.GamePlayers.FindAsync(id);
 
             if (gamePlayer == null)
@@ -52,6 +55,11 @@ namespace SC_Backend.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutGamePlayerAsync(int id, PutGamePlayerRequestDto gamePlayerDto)
         {
+            if (id <= 0)
+                return BadRequest("ID cannot be negative or 0");
+            if (gamePlayerDto.Score < 0)
+                return BadRequest("Score cannot be negative or 0");
+
             var gamePlayer = await _context.GamePlayers.FindAsync(id);
 
             if (gamePlayer == null)
@@ -88,17 +96,24 @@ namespace SC_Backend.Controllers
         [HttpPost]
         public async Task<ActionResult<GamePlayer>> PostGamePlayerAsync(PostGamePlayerRequestDto gamePlayerDto)
         {
+            if (gamePlayerDto.PlayerId <= 0)
+                return BadRequest("ID of player cannot be negative or 0.");
+            if (gamePlayerDto.GameId <= 0)
+                return BadRequest("ID of game cannot be negative or 0.");
+            if (gamePlayerDto.Score <= 0)
+                return BadRequest("Score cannot be negative.");
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
 
             var user = await _context.Users.FindAsync(gamePlayerDto.PlayerId);
             if (user == null)
-                return BadRequest("User sa datim id-jem ne postoji");
+                return BadRequest($"User with id {gamePlayerDto.PlayerId} doesnt exist!");
 
             var game = await _context.Games.FindAsync(gamePlayerDto.GameId);
             if(game==null)
-                return BadRequest("Game sa datim id-jem ne postoji");
+                return BadRequest($"Game with id {gamePlayerDto.GameId} doesnt exist!");
 
             var gamePlayer = new GamePlayer
             {
@@ -118,6 +133,9 @@ namespace SC_Backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteGamePlayerAsync(int id)
         {
+            if (id <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
             var gamePlayer = await _context.GamePlayers.FindAsync(id);
             if (gamePlayer == null)
             {
@@ -135,9 +153,12 @@ namespace SC_Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PlayerSummaryDto>>> GetAllPlayersFromGame(int gameId)
         {
+            if (gameId <= 0)
+                return BadRequest("ID cannot be negative or 0.");
+
             var game = await _context.Games.FindAsync(gameId);
             if (game == null)
-                return BadRequest("Game sa zadatim id-jem ne postoji");
+                return BadRequest($"Game with id {gameId} doesnt exist!");
 
             var listaIgraca = await _context.GamePlayers
                 .Include(player => player.Player)//moze da i ide i dublje, do userstats pa tu da se izvlaci sta ocemo
@@ -153,10 +174,10 @@ namespace SC_Backend.Controllers
                 .ToListAsync();
 
             if (listaIgraca.Count == 0)
-                return BadRequest("Vraceno 0 igraca");
+                return BadRequest("Returned 0 players.");
 
             if (listaIgraca.Count % 2 != 0)
-                return BadRequest("Broj vracenih igraca mora biti paran");
+                return BadRequest("Number of players in a game must be even.");
 
 
             return listaIgraca;
@@ -165,9 +186,12 @@ namespace SC_Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<GameSummaryDto>>> GetAllGamesFromPlayer(int playerId, bool orderByScore = false)
         {
+            if (playerId <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
             var player = await _context.Users.FindAsync(playerId);
             if (player == null)
-                return BadRequest("Igrac sa zadatim id-jem ne postoji");
+                return BadRequest($"Player with ID {playerId} doesnt exist.");
 
             var query = _context.GamePlayers
                         .Include(player => player.Game)
@@ -189,6 +213,9 @@ namespace SC_Backend.Controllers
 
         public async Task<ActionResult<IEnumerable<AllGamesTwoPlayersRequestDto>>> GamesBetweenTwoPlayers(int pId1, int pId2)
         {
+            if (pId1 <= 0 || pId2 <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
             if (pId1 == pId2)
             {
                 return BadRequest("A player cannot play against themselves.");
