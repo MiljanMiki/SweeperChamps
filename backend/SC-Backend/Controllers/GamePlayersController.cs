@@ -75,7 +75,7 @@ namespace SC_Backend.Controllers
                 return BadRequest("ID cannot be negative or 0");
             if (gamePlayerDto.Score < 0)
                 return BadRequest("Score cannot be negative");
-            if (Enum.IsDefined(typeof(TeamColors), gamePlayerDto.TeamColor))
+            if (!Enum.IsDefined(typeof(TeamColors), gamePlayerDto.TeamColor))
                 return BadRequest("Enum value is not defined");
 
             var gamePlayer = await _context.GamePlayers.FindAsync(id);
@@ -120,7 +120,7 @@ namespace SC_Backend.Controllers
                 return BadRequest("ID of game cannot be negative or 0.");
             if (gamePlayerDto.Score < 0)
                 return BadRequest("Score cannot be negative.");
-            if (Enum.IsDefined(typeof(TeamColors), gamePlayerDto.TeamColor))
+            if (!Enum.IsDefined(typeof(TeamColors), gamePlayerDto.TeamColor))
                 return BadRequest("Enum value is not defined");
 
             if (!ModelState.IsValid)

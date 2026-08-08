@@ -155,7 +155,7 @@ namespace SC_Backend.Controllers
                 return "Race mode is not allowed to have a set time.";
             if (dto.TeamSize <= 0)
                 return "Team size cannot be negative or 0.";
-            if (Enum.IsDefined(typeof(WinConditions), dto.WinCondition))
+            if (!Enum.IsDefined(typeof(WinConditions), dto.WinCondition))
                 return "Enum value is not defined";
 
             return null;
