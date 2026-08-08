@@ -24,7 +24,6 @@ public partial class GameSetting
 
     [Column("start_time_seconds")]
     public int? StartTimeSeconds { get; set; } //null for race mode
-
     
     [Column("team_size")]
     public int TeamSize { get; set; } // 1, 2, 3...
@@ -32,11 +31,11 @@ public partial class GameSetting
     [Column("win_condition")]
     public WinConditions WinCondition { get; set; } // "Race", "TimeRush"
 
-
     [Column("has_powerups")]
     public bool HasPowerUps { get; set; } // true (Custom), false (Classic)
 
-    //nisam stavio inverseproperty na game a trebalo bi
+    [InverseProperty("GameSettings")]
+    public virtual Game Game{ get; set; } = null!;
 }
 
 public enum WinConditions

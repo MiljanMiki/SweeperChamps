@@ -171,7 +171,7 @@ namespace SC_Backend.Controllers
         /// <returns>All games that satisfy the criteria.</returns>
         /// 
         [HttpGet("filter")]
-        public async Task<ActionResult<IEnumerable<GameDto>>> FilterGameByStatusAndDate(GameStatuses status,DateTime? date = null,bool day=false,bool month=false,bool year=false)
+        public async Task<ActionResult<IEnumerable<GameDto>>> FilterGameByStatusAndDateAsync(GameStatuses status,DateTime? date = null,bool day=false,bool month=false,bool year=false)
         {
             var query = _context.Games.Where(g => g.Status == status);
 
@@ -198,7 +198,7 @@ namespace SC_Backend.Controllers
         }
 
         [HttpGet("duration/{durationSeconds}")]
-        public async Task<ActionResult<IEnumerable<GameDto>>> FilterByDuration(int durationSeconds, bool longer)
+        public async Task<ActionResult<IEnumerable<GameDto>>> FilterByDurationAsync(int durationSeconds, bool longer)
         {
             if (durationSeconds <= 0)
                 return BadRequest("Game duration must be longer than 0 seconds");

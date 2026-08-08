@@ -162,7 +162,7 @@ namespace SC_Backend.Controllers
         #endregion CRUD
 
         [HttpGet("game/{gameId}")]
-        public async Task<ActionResult<IEnumerable<PlayerSummaryDto>>> GetAllPlayersFromGame(int gameId)
+        public async Task<ActionResult<IEnumerable<PlayerSummaryDto>>> GetAllPlayersFromGameAsync(int gameId)
         {
             if (gameId <= 0)
                 return BadRequest("ID cannot be negative or 0.");
@@ -195,7 +195,7 @@ namespace SC_Backend.Controllers
         }
 
         [HttpGet("player/{playerId}")]
-        public async Task<ActionResult<IEnumerable<GameSummaryDto>>> GetAllGamesFromPlayer(int playerId, bool orderByScore = false)
+        public async Task<ActionResult<IEnumerable<GameSummaryDto>>> GetAllGamesFromPlayerAsync(int playerId, bool orderByScore = false)
         {
             if (playerId <= 0)
                 return BadRequest("ID cannot be negative or 0");
@@ -222,7 +222,7 @@ namespace SC_Backend.Controllers
             return await query.ToListAsync();
         }
         [HttpGet("head-to-head")]
-        public async Task<ActionResult<IEnumerable<AllGamesTwoPlayersRequestDto>>> GamesBetweenTwoPlayers(int pId1, int pId2)
+        public async Task<ActionResult<IEnumerable<AllGamesTwoPlayersRequestDto>>> GamesBetweenTwoPlayersAsync(int pId1, int pId2)
         {
             if (pId1 <= 0 || pId2 <= 0)
                 return BadRequest("ID cannot be negative or 0");

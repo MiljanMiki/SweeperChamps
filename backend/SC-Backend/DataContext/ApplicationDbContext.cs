@@ -80,7 +80,16 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.GameSettingsId).HasName("game_settings_pkey");
 
             entity.Property(e => e.WinCondition).HasConversion<string>();
-            
+
+            //index za brzu pretragu partija
+            entity.HasIndex(e => new
+            {
+                e.WinCondition,
+                e.Width,
+                e.Height,
+                e.NumberOfMines
+            }).HasDatabaseName("IX_game_settings_template_lookup");
+
         });
 
         modelBuilder.Entity<GameSetting>(entity =>
@@ -96,6 +105,7 @@ public partial class ApplicationDbContext : DbContext
                 tb.HasCheckConstraint("CK_game_settings_mines_fit", "number_of_mines < (width * height)");
             })
         );
+
 
         modelBuilder.Entity<Move>(entity =>
         {

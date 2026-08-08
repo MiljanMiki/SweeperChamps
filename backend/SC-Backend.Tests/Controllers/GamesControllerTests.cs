@@ -132,7 +132,7 @@ namespace SC_Backend.Tests.Controllers
         {
             // Act
             var filterDate = new DateTime(2026, 8, 1);
-            var result = await _controller.FilterGameByStatusAndDate(GameStatuses.Finished, filterDate, month: true);
+            var result = await _controller.FilterGameByStatusAndDateAsync(GameStatuses.Finished, filterDate, month: true);
 
             // Assert
             Assert.That(result.Value, Is.Not.Null);
