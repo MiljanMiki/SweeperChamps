@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
+using SC_Backend.DTOs.GamePlayers;
 using SC_Backend.DTOs.Games;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SC_Backend.Controllers
 {
@@ -67,6 +68,8 @@ namespace SC_Backend.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutGameAsync(int id,PutGameDto dto)
         {
+            if (dto == null)
+                return BadRequest("DTO is null");
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0.");
 
@@ -80,6 +83,8 @@ namespace SC_Backend.Controllers
                 return BadRequest("Invalid date: a game that has ended must have an end time.");
             if(dto.EndTime != null && (dto.Status == GameStatuses.Aborted || dto.Status == GameStatuses.InProgress))
                 return BadRequest("A game that has not ended correctly cannot have end time.");
+            if(!Enum.IsDefined(typeof(GameStatuses), dto.Status))
+                    return BadRequest("Enum value is not defined");
 
 
             game.EndTime = dto.EndTime;
@@ -109,6 +114,8 @@ namespace SC_Backend.Controllers
         [HttpPost]
         public async Task<ActionResult<Game>> PostGameAsync(PostGameDto dto)
         {
+            if (dto == null)
+                return BadRequest("DTO is null");
             if (dto.GameSettingsId <= 0)
                 return BadRequest("ID cannot be negative or 0");
             if (dto.EndTime < dto.StartTime)
@@ -118,6 +125,9 @@ namespace SC_Backend.Controllers
                 return BadRequest("Game that has ended must have an end time.");
             if (dto.EndTime != null && (dto.Status == GameStatuses.Aborted || dto.Status == GameStatuses.InProgress))
                 return BadRequest("A game that has not ended correctly cannot have end time.");
+            if (!Enum.IsDefined(typeof(GameStatuses), dto.Status))
+                return BadRequest("Enum value is not defined");
+
 
             var settings = await _context.GameSettings.FindAsync(dto.GameSettingsId);
             if (settings == null)

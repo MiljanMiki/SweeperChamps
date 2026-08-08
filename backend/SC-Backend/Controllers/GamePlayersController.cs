@@ -68,10 +68,15 @@ namespace SC_Backend.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutGamePlayerAsync(int id, PutGamePlayerRequestDto gamePlayerDto)
         {
+            if (gamePlayerDto == null)
+                return BadRequest("DTO is null");
+
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0");
             if (gamePlayerDto.Score < 0)
                 return BadRequest("Score cannot be negative");
+            if (Enum.IsDefined(typeof(TeamColors), gamePlayerDto.TeamColor))
+                return BadRequest("Enum value is not defined");
 
             var gamePlayer = await _context.GamePlayers.FindAsync(id);
 
@@ -107,12 +112,16 @@ namespace SC_Backend.Controllers
         [HttpPost]
         public async Task<ActionResult<GamePlayer>> PostGamePlayerAsync(GamePlayerDto gamePlayerDto)
         {
+            if (gamePlayerDto == null)
+                return BadRequest("DTO is null");
             if (gamePlayerDto.PlayerId <= 0)
                 return BadRequest("ID of player cannot be negative or 0.");
             if (gamePlayerDto.GameId <= 0)
                 return BadRequest("ID of game cannot be negative or 0.");
             if (gamePlayerDto.Score < 0)
                 return BadRequest("Score cannot be negative.");
+            if (Enum.IsDefined(typeof(TeamColors), gamePlayerDto.TeamColor))
+                return BadRequest("Enum value is not defined");
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
