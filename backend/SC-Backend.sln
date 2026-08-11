@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36511.14
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11822.322 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SC-Backend", "SC-Backend\SC-Backend.csproj", "{9C16D62F-8DE9-477D-8BBD-57EFBA4B56DE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SC-Backend.Tests", "SC-Backend.Tests\SC-Backend.Tests.csproj", "{DFF08869-DE6E-4EDF-A476-F8EB0815FE48}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Game-server", "Game-server\Game-server.csproj", "{14AB662F-4F4A-1E1C-FD12-7AFC3061E4D7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{DFF08869-DE6E-4EDF-A476-F8EB0815FE48}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DFF08869-DE6E-4EDF-A476-F8EB0815FE48}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DFF08869-DE6E-4EDF-A476-F8EB0815FE48}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14AB662F-4F4A-1E1C-FD12-7AFC3061E4D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14AB662F-4F4A-1E1C-FD12-7AFC3061E4D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14AB662F-4F4A-1E1C-FD12-7AFC3061E4D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14AB662F-4F4A-1E1C-FD12-7AFC3061E4D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
