@@ -23,15 +23,23 @@ public partial class GameSetting
     public int NumberOfMines { get; set; }
 
     [Column("start_time_seconds")]
-    public int StartTimeSeconds { get; set; }
+    public int? StartTimeSeconds { get; set; } //null for race mode
+    
+    [Column("team_size")]
+    public int TeamSize { get; set; } // 1, 2, 3...
 
-    [Column("time_format", TypeName = "character varying")]
-    public string TimeFormat { get; set; } = null!;
+    [Column("win_condition")]
+    public WinConditions WinCondition { get; set; } // "Race", "TimeRush"
 
-    [Column("game_id")]
-    public int GameId { get; set; }
+    [Column("has_powerups")]
+    public bool HasPowerUps { get; set; } // true (Custom), false (Classic)
 
-    [ForeignKey("GameId")]
     [InverseProperty("GameSettings")]
-    public virtual Game Game { get; set; } = null!;
+    public virtual Game Game{ get; set; } = null!;
+}
+
+public enum WinConditions
+{
+    Race,
+    TimeRush
 }

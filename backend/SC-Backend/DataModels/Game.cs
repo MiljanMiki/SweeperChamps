@@ -20,14 +20,27 @@ public partial class Game
     public DateTime? EndTime { get; set; }
 
     [Column("status", TypeName = "character varying")]
-    public string Status { get; set; } = null!;
+    public GameStatuses Status { get; set; }
 
     [InverseProperty("Game")]
     public virtual ICollection<GamePlayer> GamePlayers { get; set; } = new List<GamePlayer>();
 
-    [InverseProperty("Game")]
-    public virtual ICollection<GameSetting> GameSettings { get; set; } = new List<GameSetting>();
+    [Column("game_settings_id")]
+    public int GameSettingsId { get; set; }
+
+    [ForeignKey("GameSettingsId")]
+    public virtual GameSetting GameSettings { get; set; } = null!;
 
     [InverseProperty("Game")]
     public virtual ICollection<Move> Moves { get; set; } = new List<Move>();
 }
+
+
+public enum GameStatuses
+{ 
+    Finished = 0,
+    InProgress = 10,
+    Aborted = 20, //korisnici su matchovani ali nije uspesno postavljena konekcija ili su odustali u prvih 1/2 poteza
+    Terminated = 30//jedan od korisnika je banovan u toku partije i ona je nevazeca
+}
+

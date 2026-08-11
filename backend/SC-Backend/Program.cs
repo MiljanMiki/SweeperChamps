@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using SC_Backend.Models;
+using SC_Backend.DataContext;
+using SC_Backend.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);

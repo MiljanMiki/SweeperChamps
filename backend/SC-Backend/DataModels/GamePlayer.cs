@@ -20,7 +20,7 @@ public partial class GamePlayer
     public int PlayerId { get; set; }
 
     [Column("team_color", TypeName = "character varying")]
-    public string TeamColor { get; set; } = null!;
+    public TeamColors TeamColor { get; set; }
 
     [Column("score")]
     public int Score { get; set; }
@@ -32,4 +32,10 @@ public partial class GamePlayer
     [ForeignKey("PlayerId")]
     [InverseProperty("GamePlayers")]
     public virtual User Player { get; set; } = null!;
+}
+
+public enum TeamColors
+{ 
+    Red,
+    Blue
 }

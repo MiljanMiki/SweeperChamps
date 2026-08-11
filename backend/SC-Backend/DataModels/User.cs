@@ -27,7 +27,7 @@ public partial class User
 
     [Column("user_role")]
     [StringLength(20)]
-    public string? UserRole { get; set; }
+    public UserRoles? UserRole { get; set; }
 
     [Key]
     [Column("users_id")]
@@ -35,4 +35,15 @@ public partial class User
 
     [InverseProperty("Player")]
     public virtual ICollection<GamePlayer> GamePlayers { get; set; } = new List<GamePlayer>();
+
+    [InverseProperty("User")]
+    public virtual ICollection<UserStats> UserStats { get; set; } = new List<UserStats>();
 }
+
+public enum UserRoles
+{
+    NotSet = 0,
+    User = 10,
+    Admin = 20,
+}
+
