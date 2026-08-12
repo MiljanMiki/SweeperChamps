@@ -17,5 +17,8 @@ public class GameInstance
 
     public bool IsFinished { get; set; }
 
+    /// <summary>TimeRush only: cancelling this aborts the pending timeout for the current turn (a move arrived in time).</summary>
+    public CancellationTokenSource? TurnTimerCts { get; set; }
+
     public string GroupName => $"game-{GameId}";
 }

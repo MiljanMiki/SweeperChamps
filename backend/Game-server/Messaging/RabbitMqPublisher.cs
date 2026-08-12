@@ -6,43 +6,67 @@ namespace SC_GameServer.Messaging;
 
 public interface IRabbitMqPublisher
 {
-    void PublishMoveMade(MoveMadeMessage message);
-    void PublishGameFinished(GameFinishedMessage message);
+    Task PublishMoveMadeAsync(MoveMadeMessage message);
+    Task PublishGameFinishedAsync(GameFinishedMessage message);
 }
 
-public class RabbitMqPublisher : IRabbitMqPublisher, IDisposable
+/// <summary>
+/// Thin wrapper around RabbitMQ.Client 7.x (fully async API: IChannel,
+/// CreateChannelAsync, BasicPublishAsync, etc). Queue names declared here
+/// must match what the web API listens on / publishes to.
+/// </summary>
+public class RabbitMqPublisher : IRabbitMqPublisher, IAsyncDisposable
 {
     private const string MovesQueue = "game.moves";
     private const string GameFinishedQueue = "game.finished";
 
     private readonly IConnection _connection;
-    private readonly IModel _channel;
+    private IChannel? _channel;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
 
     public RabbitMqPublisher(IConnection connection)
     {
         _connection = connection;
-        _channel = _connection.CreateModel();
-
-        _channel.QueueDeclare(MovesQueue, durable: true, exclusive: false, autoDelete: false);
-        _channel.QueueDeclare(GameFinishedQueue, durable: true, exclusive: false, autoDelete: false);
     }
 
-    public void PublishMoveMade(MoveMadeMessage message) => Publish(MovesQueue, message);
-
-    public void PublishGameFinished(GameFinishedMessage message) => Publish(GameFinishedQueue, message);
-
-    private void Publish<T>(string queue, T message)
+    private async Task<IChannel> GetChannelAsync()
     {
+        if (_channel is not null) return _channel;
+
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_channel is null)
+            {
+                _channel = await _connection.CreateChannelAsync();
+                await _channel.QueueDeclareAsync(MovesQueue, durable: true, exclusive: false, autoDelete: false);
+                await _channel.QueueDeclareAsync(GameFinishedQueue, durable: true, exclusive: false, autoDelete: false);
+            }
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+
+        return _channel;
+    }
+
+    public Task PublishMoveMadeAsync(MoveMadeMessage message) => PublishAsync(MovesQueue, message);
+
+    public Task PublishGameFinishedAsync(GameFinishedMessage message) => PublishAsync(GameFinishedQueue, message);
+
+    private async Task PublishAsync<T>(string queue, T message)
+    {
+        var channel = await GetChannelAsync();
         var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
-        var props = _channel.CreateBasicProperties();
-        props.Persistent = true;
+        var props = new BasicProperties { Persistent = true };
 
-        _channel.BasicPublish(exchange: "", routingKey: queue, basicProperties: props, body: body);
+        await channel.BasicPublishAsync(exchange: "", routingKey: queue, mandatory: false, basicProperties: props, body: body);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _channel?.Dispose();
-        _connection?.Dispose();
+        if (_channel is not null) await _channel.CloseAsync();
+        await _connection.CloseAsync();
     }
 }
