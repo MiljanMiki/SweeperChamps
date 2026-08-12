@@ -1,6 +1,4 @@
-using Game_server.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Connections;
 using Microsoft.IdentityModel.Tokens;
 using RabbitMQ.Client;
 using SC_GameServer.GameEngine;
@@ -49,6 +47,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ---- RabbitMQ ----
+// v7.x client is fully async, so connection creation is awaited once at
+// startup via GetAwaiter().GetResult() - acceptable for a one-time singleton
+// init; everything after this (channels, publish, consume) is async.
 builder.Services.AddSingleton<IConnection>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -57,18 +58,17 @@ builder.Services.AddSingleton<IConnection>(sp =>
         HostName = config["RabbitMq:Host"] ?? "localhost",
         Port = int.Parse(config["RabbitMq:Port"] ?? "5672"),
         UserName = config["RabbitMq:User"] ?? "guest",
-        Password = config["RabbitMq:Password"] ?? "guest",
-        DispatchConsumersAsync = false
+        Password = config["RabbitMq:Password"] ?? "guest"
     };
-    return factory.CreateConnection();
+    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
 });
 builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
 builder.Services.AddHostedService<GameCreatedConsumer>();
 
 // ---- Game state / engine ----
 builder.Services.AddSingleton<IGameStateManager, GameStateManager>();
-// Swap this for the real engine once it's built - nothing else changes.
-builder.Services.AddSingleton<IGameEngine, StubGameEngine>();
+builder.Services.AddSingleton<IGameEngine, MinesweeperGameEngine>();
+builder.Services.AddSingleton<IGameResultProcessor, GameResultProcessor>();
 
 var app = builder.Build();
 

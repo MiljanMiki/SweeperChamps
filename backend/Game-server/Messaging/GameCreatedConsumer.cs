@@ -1,15 +1,20 @@
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.SignalR;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using SC_GameServer.GameEngine;
-using SC_GameServer.Hubs;
 using SC_GameServer.Models;
 using SC_GameServer.Services;
 
 namespace SC_GameServer.Messaging;
 
+/// <summary>
+/// Listens on "game.created" (published by the web API once a match + DB
+/// rows exist). Builds the in-memory GameInstance, initializes the engine's
+/// board, and - for TimeRush - starts the first turn's timer. Players then
+/// connect and call Hub.JoinGame(gameId).
+/// Written against RabbitMQ.Client 7.x's async API (IChannel, AsyncEventingBasicConsumer).
+/// </summary>
 public class GameCreatedConsumer : BackgroundService
 {
     private const string GameCreatedQueue = "game.created";
@@ -17,30 +22,32 @@ public class GameCreatedConsumer : BackgroundService
     private readonly IConnection _connection;
     private readonly IGameStateManager _gameStateManager;
     private readonly IGameEngine _gameEngine;
-    private readonly IHubContext<GameHub> _hubContext;
+    private readonly IGameResultProcessor _resultProcessor;
     private readonly ILogger<GameCreatedConsumer> _logger;
+
+    private IChannel? _channel;
 
     public GameCreatedConsumer(
         IConnection connection,
         IGameStateManager gameStateManager,
         IGameEngine gameEngine,
-        IHubContext<GameHub> hubContext,
+        IGameResultProcessor resultProcessor,
         ILogger<GameCreatedConsumer> logger)
     {
         _connection = connection;
         _gameStateManager = gameStateManager;
         _gameEngine = gameEngine;
-        _hubContext = hubContext;
+        _resultProcessor = resultProcessor;
         _logger = logger;
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var channel = _connection.CreateModel();
-        channel.QueueDeclare(GameCreatedQueue, durable: true, exclusive: false, autoDelete: false);
+        _channel = await _connection.CreateChannelAsync(cancellationToken: stoppingToken);
+        await _channel.QueueDeclareAsync(GameCreatedQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
 
-        var consumer = new EventingBasicConsumer(channel);
-        consumer.Received += (_, ea) =>
+        var consumer = new AsyncEventingBasicConsumer(_channel);
+        consumer.ReceivedAsync += async (_, ea) =>
         {
             try
             {
@@ -49,35 +56,48 @@ public class GameCreatedConsumer : BackgroundService
                 if (msg is null)
                 {
                     _logger.LogWarning("Received unparseable game.created message");
-                    channel.BasicAck(ea.DeliveryTag, false);
+                    await _channel.BasicAckAsync(ea.DeliveryTag, false);
                     return;
                 }
 
-                var boardState = _gameEngine.CreateGame(msg.GameId, msg.GameSettings, msg.Players);
+                var creation = _gameEngine.CreateGame(msg.GameId, msg.GameSettings, msg.Players);
 
                 var instance = new GameInstance
                 {
                     GameId = msg.GameId,
                     Settings = msg.GameSettings,
                     Players = msg.Players,
-                    BoardState = boardState
+                    BoardState = creation.BoardState
                 };
 
                 _gameStateManager.AddGame(instance);
                 _logger.LogInformation("Game {GameId} created with {PlayerCount} players", msg.GameId, msg.Players.Count);
 
-                channel.BasicAck(ea.DeliveryTag, false);
+                // TimeRush: start the first player's clock now, before anyone
+                // has necessarily connected yet - matches "auto-lose on
+                // timeout" even if a player never joins in time.
+                if (creation.FirstTurnPlayerId is int firstPlayerId && creation.MoveDeadlineSeconds is int deadline)
+                {
+                    _resultProcessor.ScheduleTurnTimeout(instance, firstPlayerId, deadline);
+                }
+
+                await _channel.BasicAckAsync(ea.DeliveryTag, false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process game.created message");
-                channel.BasicNack(ea.DeliveryTag, false, requeue: false);
+                await _channel.BasicNackAsync(ea.DeliveryTag, false, requeue: false);
             }
         };
 
-        channel.BasicConsume(GameCreatedQueue, autoAck: false, consumer);
+        await _channel.BasicConsumeAsync(GameCreatedQueue, autoAck: false, consumer, cancellationToken: stoppingToken);
 
-        stoppingToken.Register(() => channel.Close());
-        return Task.CompletedTask;
+        await Task.Delay(Timeout.Infinite, stoppingToken).ContinueWith(_ => { });
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_channel is not null) await _channel.CloseAsync(cancellationToken);
+        await base.StopAsync(cancellationToken);
     }
 }

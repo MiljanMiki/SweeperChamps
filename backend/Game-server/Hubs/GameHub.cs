@@ -2,28 +2,27 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using SC_GameServer.GameEngine;
-using SC_GameServer.Messaging;
 using SC_GameServer.Services;
 
 namespace SC_GameServer.Hubs;
 
-[Authorize] 
+[Authorize] // assumes JWT auth already configured (same scheme as the web API)
 public class GameHub : Hub
 {
     private readonly IGameStateManager _gameStateManager;
     private readonly IGameEngine _gameEngine;
-    private readonly IRabbitMqPublisher _publisher;
+    private readonly IGameResultProcessor _resultProcessor;
     private readonly ILogger<GameHub> _logger;
 
     public GameHub(
         IGameStateManager gameStateManager,
         IGameEngine gameEngine,
-        IRabbitMqPublisher publisher,
+        IGameResultProcessor resultProcessor,
         ILogger<GameHub> logger)
     {
         _gameStateManager = gameStateManager;
         _gameEngine = gameEngine;
-        _publisher = publisher;
+        _resultProcessor = resultProcessor;
         _logger = logger;
     }
 
@@ -31,6 +30,10 @@ public class GameHub : Hub
         int.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? throw new HubException("Missing player id claim"));
 
+    /// <summary>
+    /// Client calls this right after connecting (or reconnecting) to attach
+    /// to their game's group and register their current connectionId.
+    /// </summary>
     public async Task JoinGame(int gameId)
     {
         if (!_gameStateManager.TryGetGame(gameId, out var game) || game is null)
@@ -43,14 +46,19 @@ public class GameHub : Hub
         game.Connections[playerId] = Context.ConnectionId;
         await Groups.AddToGroupAsync(Context.ConnectionId, game.GroupName);
 
-        // Let the rest of the group know this player (re)connected.
         await Clients.OthersInGroup(game.GroupName).SendAsync("PlayerConnected", playerId);
 
         // TODO: send the joining player the current board state so a
-        // reconnecting client can resync (needs engine support to serialize
-        // current state for a given player/team's view of the board).
+        // reconnecting client can resync (needs the engine to expose a
+        // per-player/team view of current board state - not built yet).
     }
 
+    /// <summary>
+    /// Client submits a move. Server validates via the engine; on success the
+    /// result is broadcast to the group, persisted via RabbitMQ, and (for
+    /// TimeRush) the next player's turn timer is scheduled - all handled by
+    /// IGameResultProcessor so this path matches the timeout path exactly.
+    /// </summary>
     public async Task MakeMove(int gameId, MoveRequest move)
     {
         if (!_gameStateManager.TryGetGame(gameId, out var game) || game is null)
@@ -67,50 +75,19 @@ public class GameHub : Hub
 
         if (!result.IsValid)
         {
-            // Only tell the caller, not the whole group.
             await Clients.Caller.SendAsync("MoveRejected", result.InvalidReason);
             return;
         }
 
-        await Clients.Group(game.GroupName).SendAsync("MoveMade", new
-        {
-            playerId,
-            payload = result.BroadcastPayload
-        });
-
-        _publisher.PublishMoveMade(new MoveMadeMessage
-        {
-            GameId = gameId,
-            PlayerId = playerId,
-            Timestamp = DateTime.UtcNow,
-            MoveLogJson = result.MoveLogJson
-        });
-
-        if (result.GameOver)
-        {
-            game.IsFinished = true;
-
-            await Clients.Group(game.GroupName).SendAsync("GameOver", result.FinalResults);
-
-            _publisher.PublishGameFinished(new GameFinishedMessage
-            {
-                GameId = gameId,
-                EndTime = DateTime.UtcNow,
-                Status = "Finished",
-                Results = result.FinalResults ?? new List<PlayerResultDto>()
-            });
-
-            _gameStateManager.RemoveGame(gameId);
-        }
+        await _resultProcessor.ProcessAsync(game, playerId, result);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         // Connection drop doesn't end the game - the player can reconnect and
-        // call JoinGame again. If you want an "opponent disconnected" toast,
-        // look up which game this connectionId belonged to and notify the
-        // group here (needs a connectionId -> (gameId, playerId) reverse map
-        // if you want O(1) lookup instead of scanning active games).
+        // call JoinGame again. TimeRush's turn timer keeps running regardless
+        // (a disconnected player on the clock still times out and is
+        // eliminated - that's the "auto-lose" behavior you asked for).
         await base.OnDisconnectedAsync(exception);
     }
 }
