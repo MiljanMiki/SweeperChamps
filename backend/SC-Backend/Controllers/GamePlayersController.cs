@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
+using SC_Backend.Repositories;
 
 namespace SC_Backend.Controllers
 {
@@ -16,11 +17,11 @@ namespace SC_Backend.Controllers
     [ApiController]
     public class GamePlayersController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IGamePlayerAsyncRepository _gamePlayerRepository;
 
-        public GamePlayersController(ApplicationDbContext context)
+        public GamePlayersController( IGamePlayerAsyncRepository gamePlayerRepository)
         {
-            _context = context;
+            _gamePlayerRepository = gamePlayerRepository;
         }
 
         #region CRUD
@@ -29,7 +30,7 @@ namespace SC_Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<GamePlayerDto>>> GetGamePlayersAsync()
         {
-            var list = await _context.GamePlayers.ToListAsync();
+            var list = await _gamePlayerRepository.GetAllAsync();
             return list.Select(gamePlayer => new GamePlayerDto
             {
                 PlayerId = gamePlayer.PlayerId,
@@ -40,14 +41,13 @@ namespace SC_Backend.Controllers
         }
 
         // GET: api/GamePlayers/5
-        //PROMENI U DTO
         [HttpGet("{id}")]
         public async Task<ActionResult<GamePlayerDto>> GetGamePlayerAsync(int id)
         {
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0");
 
-            var gamePlayer = await _context.GamePlayers.FindAsync(id);
+            var gamePlayer = await _gamePlayerRepository.GetAsync(id);
 
             if (gamePlayer == null)
             {
@@ -64,7 +64,6 @@ namespace SC_Backend.Controllers
         }
 
         // PUT: api/GamePlayers/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutGamePlayerAsync(int id, PutGamePlayerRequestDto gamePlayerDto)
         {
@@ -78,23 +77,26 @@ namespace SC_Backend.Controllers
             if (!Enum.IsDefined(typeof(TeamColors), gamePlayerDto.TeamColor))
                 return BadRequest("Enum value is not defined");
 
-            var gamePlayer = await _context.GamePlayers.FindAsync(id);
+            var gamePlayer = await _gamePlayerRepository.GetAsync(id);
 
             if (gamePlayer == null)
             {
                 return BadRequest($"Game player with ID {id} doesnt exist.");
             }
 
+
             gamePlayer.Score = gamePlayerDto.Score;
             gamePlayer.TeamColor = gamePlayerDto.TeamColor;
 
+            //_gamePlayerRepository.Update(gamePlayer);
+
             try
             {
-                await _context.SaveChangesAsync();
+                await _gamePlayerRepository.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!GamePlayerExists(id))
+                if (await GamePlayerExists(id) == false)
                 {
                     return NotFound();
                 }
@@ -127,14 +129,6 @@ namespace SC_Backend.Controllers
                 return BadRequest(ModelState);
 
 
-            var user = await _context.Users.FindAsync(gamePlayerDto.PlayerId);
-            if (user == null)
-                return BadRequest($"User with id {gamePlayerDto.PlayerId} doesnt exist!");
-
-            var game = await _context.Games.FindAsync(gamePlayerDto.GameId);
-            if(game==null)
-                return BadRequest($"Game with id {gamePlayerDto.GameId} doesnt exist!");
-
             var gamePlayer = new GamePlayer
             {
                 GameId = gamePlayerDto.GameId,
@@ -143,8 +137,16 @@ namespace SC_Backend.Controllers
                 Score = gamePlayerDto.Score
             };
 
-            _context.GamePlayers.Add(gamePlayer);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _gamePlayerRepository.Add(gamePlayer);
+                await _gamePlayerRepository.SaveChangesAsync();
+            }
+            catch(ArgumentNullException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            
 
             return CreatedAtAction(nameof(GetGamePlayerAsync), new { id = gamePlayer.GamePlayersId }, gamePlayer);
         }
@@ -156,14 +158,21 @@ namespace SC_Backend.Controllers
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0");
 
-            var gamePlayer = await _context.GamePlayers.FindAsync(id);
+            var gamePlayer = await _gamePlayerRepository.GetAsync(id);
             if (gamePlayer == null)
             {
                 return NotFound();
             }
 
-            _context.GamePlayers.Remove(gamePlayer);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _gamePlayerRepository.Delete(gamePlayer);
+                await _gamePlayerRepository.SaveChangesAsync();
+            }
+            catch (ArgumentNullException ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
             return NoContent();
         }
@@ -176,22 +185,8 @@ namespace SC_Backend.Controllers
             if (gameId <= 0)
                 return BadRequest("ID cannot be negative or 0.");
 
-            var game = await _context.Games.FindAsync(gameId);
-            if (game == null)
-                return BadRequest($"Game with id {gameId} doesnt exist!");
 
-            var listaIgraca = await _context.GamePlayers
-                .Include(player => player.Player)//moze da i ide i dublje, do userstats pa tu da se izvlaci sta ocemo
-                .Where(player => player.GameId == gameId)
-                .Select(player => new PlayerSummaryDto
-                {
-                    PlayerId = player.PlayerId,
-                    Username = player.Player.Username,
-                    TeamColor = player.TeamColor.ToString(),
-                    Score = player.Score,
-                    Elo = player.Player.Elo,
-                })
-                .ToListAsync();
+            var listaIgraca = (await _gamePlayerRepository.GetAllPlayersFromGameAsync(gameId)).ToList();
 
             if (listaIgraca.Count == 0)
                 return BadRequest("Returned 0 players.");
@@ -200,7 +195,14 @@ namespace SC_Backend.Controllers
                 return BadRequest("Number of players in a game must be even.");
 
 
-            return listaIgraca;
+            return listaIgraca.Select(player => new PlayerSummaryDto
+            {
+                PlayerId = player.PlayerId,
+                Username = player.Player.Username,
+                TeamColor = player.TeamColor.ToString(),
+                Score = player.Score,
+                Elo = player.Player.Elo,
+            }).ToList();
         }
 
         [HttpGet("player/{playerId}")]
@@ -209,53 +211,29 @@ namespace SC_Backend.Controllers
             if (playerId <= 0)
                 return BadRequest("ID cannot be negative or 0");
 
-            var player = await _context.Users.FindAsync(playerId);
+            var player = await _gamePlayerRepository.GetAsync(playerId);
             if (player == null)
                 return BadRequest($"Player with ID {playerId} doesnt exist.");
 
-            var query = _context.GamePlayers
-                        .Include(player => player.Game)
-                        .Where(player => player.PlayerId == playerId)
-                        .Select(player => new GameSummaryDto
-                        {
-                            GamesId = player.Game.GamesId,
-                            StartTime = player.Game.StartTime,
-                            EndTime = player.Game.EndTime,
-                            Status = player.Game.Status,
-                            Score = player.Score
-                        });
+            var listaIgra = await _gamePlayerRepository.GetAllGamesFromPlayerAsync(playerId, orderByScore);
 
-            if (orderByScore)
-                query = query.OrderByDescending(game => game.Score);
-
-            return await query.ToListAsync();
+            return listaIgra.Select(game => new GameSummaryDto
+            {
+                GamesId = game.GamesId,
+                StartTime = game.StartTime,
+                EndTime = game.EndTime,
+                Status = game.Status,
+                Score = player.Score
+            }).ToList();
         }
         [HttpGet("head-to-head")]
-        public async Task<ActionResult<IEnumerable<AllGamesTwoPlayersRequestDto>>> GamesBetweenTwoPlayersAsync(int pId1, int pId2)
+        public async Task<ActionResult<IEnumerable<AllGamesTwoPlayersRequestDto>>> GamesBetweenPlayersAsync(int[] playerIDs)
         {
-            if (pId1 <= 0 || pId2 <= 0)
-                return BadRequest("ID cannot be negative or 0");
-
-            if (pId1 == pId2)
+            try
             {
-                return BadRequest("A player cannot play against themselves.");
-            }
+                var games = await _gamePlayerRepository.GamesBetweenPlayersAsync(playerIDs);
 
-            var player1GameIds = _context.GamePlayers
-                .Where(gp => gp.PlayerId == pId1)
-                .Select(gp => gp.GameId);
-
-            var sharedGameIds = _context.GamePlayers
-                .Where(gp => gp.PlayerId == pId2 && player1GameIds.Contains(gp.GameId))
-                .Select(gp => gp.GameId);
-
-
-            var games = await _context.Games
-                .Where(g => sharedGameIds.Contains(g.GamesId))
-                .Include(g => g.GameSettings)
-                .Include(g => g.GamePlayers)
-                    .ThenInclude(gp => gp.Player)
-                .Select(g => new AllGamesTwoPlayersRequestDto
+                var gamesDTOs = games.Select(g => new AllGamesTwoPlayersRequestDto
                 {
                     GamesId = g.GamesId,
                     StartTime = g.StartTime,
@@ -272,14 +250,24 @@ namespace SC_Backend.Controllers
                         Score = player.Score,
                         Elo = player.Player.Elo
                     }).ToList()
-                })
-                .ToListAsync();
+                }).ToList();
 
-            return Ok(games);
+                return Ok(gamesDTOs);
+
+            }
+            catch (ArgumentNullException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch(ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
         }
-        private bool GamePlayerExists(int id)
+        private async Task<bool> GamePlayerExists(int id)
         {
-            return _context.GamePlayers.Any(e => e.GamePlayersId == id);
+            return await _gamePlayerRepository.GetAsync(id) != null;
         }
     }
 }

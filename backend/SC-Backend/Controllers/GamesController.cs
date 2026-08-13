@@ -5,10 +5,12 @@ using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
 using SC_Backend.DTOs.Games;
+using SC_Backend.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace SC_Backend.Controllers
 {
@@ -16,11 +18,11 @@ namespace SC_Backend.Controllers
     [ApiController]
     public class GamesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IGameRepository _gameRepository;
 
-        public GamesController(ApplicationDbContext context)
+        public GamesController(IGameRepository gameRepository)
         {
-            _context = context;
+            _gameRepository = gameRepository;
         }
 
         #region CRUD
@@ -28,7 +30,7 @@ namespace SC_Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<GameDto>>> GetGamesAsync()
         {
-            var listGames = await _context.Games.ToListAsync();
+            var listGames = await _gameRepository.GetAllAsync();
 
             return listGames.Select(game => new GameDto
             {
@@ -47,11 +49,11 @@ namespace SC_Backend.Controllers
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0");
 
-            var game = await _context.Games.FindAsync(id);
+            var game = await _gameRepository.GetAsync(id);
 
             if (game == null)
             {
-                return NotFound();
+                return NotFound($"Game with id {id} does not exist");
             }
 
             return new GameDto {
@@ -73,7 +75,7 @@ namespace SC_Backend.Controllers
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0.");
 
-            var game = await _context.Games.FindAsync(id);
+            var game = await _gameRepository.GetAsync(id);
             if (game == null)
                 return BadRequest($"Game with ID {id} doesnt exist.");
 
@@ -90,13 +92,15 @@ namespace SC_Backend.Controllers
             game.EndTime = dto.EndTime;
             game.Status = dto.Status;
 
+            //_gameRepository.Update(game);
+
             try
             {
-                await _context.SaveChangesAsync();
+                await _gameRepository.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!GameExists(id))
+                if (await GameExists(id) == false)
                 {
                     return NotFound();
                 }
@@ -121,17 +125,13 @@ namespace SC_Backend.Controllers
             if (dto.EndTime < dto.StartTime)
                 return BadRequest("Game cannot end before it started.");
 
-            if (dto.EndTime == null && dto.Status == GameStatuses.Finished && dto.Status == GameStatuses.Terminated)
+            if (dto.EndTime == null && dto.Status == GameStatuses.Finished || dto.Status == GameStatuses.Terminated)
                 return BadRequest("Game that has ended must have an end time.");
             if (dto.EndTime != null && (dto.Status == GameStatuses.Aborted || dto.Status == GameStatuses.InProgress))
                 return BadRequest("A game that has not ended correctly cannot have end time.");
             if (!Enum.IsDefined(typeof(GameStatuses), dto.Status))
                 return BadRequest("Enum value is not defined");
 
-
-            var settings = await _context.GameSettings.FindAsync(dto.GameSettingsId);
-            if (settings == null)
-                return BadRequest("GameSettings sa datim id-jem ne postoji");
 
             var game = new Game
             {
@@ -140,11 +140,18 @@ namespace SC_Backend.Controllers
                 Status = dto.Status,
                 GameSettingsId = dto.GameSettingsId,
             };
-            _context.Games.Add(game);
+            try
+            {
+                _gameRepository.Add(game);
 
-            await _context.SaveChangesAsync();
+                await _gameRepository.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetGameAsync), new { id = game.GamesId }, game);
+                return CreatedAtAction(nameof(GetGameAsync), new { id = game.GamesId }, game);
+            }
+            catch(KeyNotFoundException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         // DELETE: api/Games/5
@@ -154,57 +161,50 @@ namespace SC_Backend.Controllers
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0");
 
-            var game = await _context.Games.FindAsync(id);
+            var game = await _gameRepository.GetAsync(id);
             if (game == null)
             {
                 return NotFound();
             }
 
-            _context.Games.Remove(game);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _gameRepository.Delete(game);
+                await _gameRepository.SaveChangesAsync();
+            }
+            catch (ArgumentNullException ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
             return NoContent();
         }
 
         #endregion CRUD
 
-        ///  <summary>
-        /// Filters games based on status and the date of the start of the game. If date is omitted, it will be filtered only by status.
-        /// If date is not omitted then one of day,month or year parameters must be set to true or BadRequest is returned. Only the first parameter set 
-        /// to true is considered in the query.
-        /// </summary>
-        /// <param name="status">Current status of the game.</param>
-        /// <param name="date">Date by which the games will be filtered. If none of the following parameters is not set to true the query returns BadRequest: day, month, year</param>
-        /// <param name="day">If set to true games will be filtered by day only. Month and year will not be considered</param>
-        /// <param name="month">If set to true games will be filtered by month only.Day and year will not be considered</param>
-        /// <param name="year">If set to true games will be filtered by year only. Day and month will not be considered</param>
-        /// <returns>All games that satisfy the criteria.</returns>
+        
         /// 
         [HttpGet("filter")]
         public async Task<ActionResult<IEnumerable<GameDto>>> FilterGameByStatusAndDateAsync(GameStatuses status,DateTime? date = null,bool day=false,bool month=false,bool year=false)
         {
-            var query = _context.Games.Where(g => g.Status == status);
-
-            if(date != null)
+            try
             {
-                if (day)
-                    query = query.Where(g => g.StartTime.Date == date.Value.Date);
-                else if (month)
-                    query = query.Where(g => g.StartTime.Month == date.Value.Month);
-                else if (year)
-                    query = query.Where(g => g.StartTime.Year == date.Value.Year);
-                else
-                    return BadRequest("Day, month or year must be specified for date filtering.");
+                var games = await _gameRepository.FilterGameByStatusAndDateAsync(status, date, day, month, year);
+
+                return Ok(games.Select(g => new GameDto
+                {
+                    GamesId = g.GamesId,
+                    StartTime = g.StartTime,
+                    EndTime = g.EndTime,
+                    Status = g.Status,
+                    GameSettingsId = g.GameSettingsId
+                }).ToList());
             }
-
-            return await query.Select(g => new GameDto
+            catch (ArgumentException ex)
             {
-                GamesId = g.GamesId,
-                StartTime = g.StartTime,
-                EndTime = g.EndTime,
-                Status = g.Status,
-                GameSettingsId = g.GameSettingsId
-            }).ToListAsync();
+                return BadRequest(ex.Message);
+            }
+            
         }
 
         [HttpGet("duration/{durationSeconds}")]
@@ -213,24 +213,21 @@ namespace SC_Backend.Controllers
             if (durationSeconds <= 0)
                 return BadRequest("Game duration must be longer than 0 seconds");
 
-            var query = _context.Games.Where(g => g.Status == GameStatuses.Finished && g.EndTime != null);//za svaki slucaj i null check
-            query = longer ?
-                query.Where(g => EF.Functions.DateDiffSecond(g.StartTime, g.EndTime) > durationSeconds) :
-                query.Where(g => EF.Functions.DateDiffSecond(g.StartTime, g.EndTime) <= durationSeconds);
+            var games = await _gameRepository.FilterByDurationAsync(durationSeconds, longer);
 
-            return await query.Select(g => new GameDto
+            return games.Select(g => new GameDto
             {
                 GamesId = g.GamesId,
                 StartTime = g.StartTime,
                 EndTime = g.EndTime,
                 Status = g.Status,
                 GameSettingsId = g.GameSettingsId
-            }).ToListAsync();
+            }).ToList();
         }
 
-        private bool GameExists(int id)
+        private async Task<bool> GameExists(int id)
         {
-            return _context.Games.Any(e => e.GamesId == id);
+            return (await _gameRepository.GetAsync(id)) != null;
         }
     }
 }
