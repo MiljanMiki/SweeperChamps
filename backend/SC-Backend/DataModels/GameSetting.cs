@@ -24,7 +24,7 @@ public partial class GameSetting
 
     [Column("start_time_seconds")]
     public int? StartTimeSeconds { get; set; } //null for race mode
-    
+
     [Column("team_size")]
     public int TeamSize { get; set; } // 1, 2, 3...
 

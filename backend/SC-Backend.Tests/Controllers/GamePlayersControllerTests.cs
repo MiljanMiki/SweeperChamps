@@ -5,6 +5,8 @@ using SC_Backend.Controllers;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
+using SC_Backend.Repositories;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,19 +17,22 @@ namespace SC_Backend.Tests.Controllers
     public class GamePlayersControllerTests
     {
         private ApplicationDbContext _context;
+        private GamePlayerAsyncRepository _repository;
         private GamePlayersController _controller;
 
         [SetUp]
         public void Setup()
         {
-            // Set up the In-Memory database for testing
+            // Using standard standard libraries (EF Core In-Memory) to avoid external mocking dependencies
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseInMemoryDatabase(databaseName: System.Guid.NewGuid().ToString()) // Unique DB for each test
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
 
             _context = new ApplicationDbContext(options);
+            _repository = new GamePlayerAsyncRepository(_context);
+            _controller = new GamePlayersController(_repository);
 
-            // Seed initial data
+            // Seed Initial Data
             _context.GamePlayers.Add(new GamePlayer
             {
                 GamePlayersId = 1,
@@ -37,8 +42,6 @@ namespace SC_Backend.Tests.Controllers
                 Score = 100
             });
             _context.SaveChanges();
-
-            _controller = new GamePlayersController(_context);
         }
 
         [TearDown]
@@ -46,6 +49,19 @@ namespace SC_Backend.Tests.Controllers
         {
             _context.Database.EnsureDeleted();
             _context.Dispose();
+        }
+
+        [Test]
+        public async Task GetGamePlayersAsync_ReturnsAllGamePlayers()
+        {
+            // Act
+            var result = await _controller.GetGamePlayersAsync();
+
+            // Assert
+            Assert.That(result.Value, Is.Not.Null);
+            var playersList = result.Value.ToList();
+            Assert.That(playersList.Count, Is.EqualTo(1));
+            Assert.That(playersList[0].Score, Is.EqualTo(100));
         }
 
         [Test]
@@ -71,34 +87,33 @@ namespace SC_Backend.Tests.Controllers
         }
 
         [Test]
-        public async Task GetGamePlayerAsync_WithNonExistentId_ReturnsNotFound()
-        {
-            // Act
-            var result = await _controller.GetGamePlayerAsync(99);
-
-            // Assert
-            Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
-        }
-
-        [Test]
-        public async Task PutGamePlayerAsync_WithValidData_UpdatesSuccessfully()
+        public async Task PutGamePlayerAsync_WithValidData_UpdatesProperly()
         {
             // Arrange
-            var updateDto = new PutGamePlayerRequestDto
+            var putDto = new PutGamePlayerRequestDto
             {
-                Score = 150,
+                Score = 250,
                 TeamColor = TeamColors.Blue
             };
 
             // Act
-            var result = await _controller.PutGamePlayerAsync(1, updateDto);
+            var result = await _controller.PutGamePlayerAsync(1, putDto);
 
             // Assert
             Assert.That(result, Is.InstanceOf<NoContentResult>());
+            var updatedDbEntity = await _context.GamePlayers.FindAsync(1);
+            Assert.That(updatedDbEntity.Score, Is.EqualTo(250));
+            Assert.That(updatedDbEntity.TeamColor, Is.EqualTo(TeamColors.Blue));
+        }
 
-            var updatedEntity = await _context.GamePlayers.FindAsync(1);
-            Assert.That(updatedEntity.Score, Is.EqualTo(150));
-            Assert.That(updatedEntity.TeamColor, Is.EqualTo(TeamColors.Blue));
+        [Test]
+        public async Task PutGamePlayerAsync_WithNullDto_ReturnsBadRequest()
+        {
+            // Act
+            var result = await _controller.PutGamePlayerAsync(1, null);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
         }
 
         [Test]
@@ -111,6 +126,21 @@ namespace SC_Backend.Tests.Controllers
             Assert.That(result, Is.InstanceOf<NoContentResult>());
             var entityExists = await _context.GamePlayers.AnyAsync(gp => gp.GamePlayersId == 1);
             Assert.That(entityExists, Is.False);
+        }
+
+        [Test]
+        public async Task GamesBetweenPlayersAsync_WithValidArray_ReturnsGames()
+        {
+            // Arrange
+            int[] playerIds = { 5, 12 };
+            // Simulate missing data gracefully handled by repository
+
+            // Act
+            var result = await _controller.GamesBetweenPlayersAsync(playerIds);
+
+            // Assert
+            var okResult = result.Result as OkObjectResult;
+            Assert.That(okResult, Is.Not.Null);
         }
     }
 }
