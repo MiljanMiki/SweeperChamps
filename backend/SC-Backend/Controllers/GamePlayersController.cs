@@ -88,7 +88,7 @@ namespace SC_Backend.Controllers
             gamePlayer.Score = gamePlayerDto.Score;
             gamePlayer.TeamColor = gamePlayerDto.TeamColor;
 
-            _gamePlayerRepository.Update(gamePlayer);
+            //_gamePlayerRepository.Update(gamePlayer);
 
             try
             {
@@ -164,8 +164,15 @@ namespace SC_Backend.Controllers
                 return NotFound();
             }
 
-            _gamePlayerRepository.Delete(gamePlayer);
-            await _gamePlayerRepository.SaveChangesAsync();
+            try
+            {
+                _gamePlayerRepository.Delete(gamePlayer);
+                await _gamePlayerRepository.SaveChangesAsync();
+            }
+            catch (ArgumentNullException ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
             return NoContent();
         }
