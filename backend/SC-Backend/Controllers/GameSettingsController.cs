@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GameSettings;
+using SC_Backend.Repositories;
 
 namespace SC_Backend.Controllers
 {
@@ -16,12 +17,12 @@ namespace SC_Backend.Controllers
     [ApiController]
     public class GameSettingsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IGameSettingRepository _gameSettingRepository;
         private const int minHeight = 10, maxHeight = 50, minWidth = 10, maxWidth = 50;
 
-        public GameSettingsController(ApplicationDbContext context)
+        public GameSettingsController(IGameSettingRepository repo)
         {
-            _context = context;
+            _gameSettingRepository = repo;
         }
 
         //PUT i DELETE operacije nema
@@ -30,9 +31,9 @@ namespace SC_Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<GameSettingDto>>> GetGameSettingsAsync()
         {
-            var list = await _context.GameSettings.ToListAsync();
+            var list = await _gameSettingRepository.GetAllAsync();
 
-            return list.Select(MapToDto).ToList();
+            return Ok(list.Select(MapToDto).ToList());
         }
 
         // GET: api/GameSettings/5
@@ -42,14 +43,14 @@ namespace SC_Backend.Controllers
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0.");
 
-            var gs = await _context.GameSettings.FindAsync(id);
+            var gs = await _gameSettingRepository.GetAsync(id);
 
             if (gs == null)
             {
                 return NotFound();
             }
 
-            return MapToDto(gs);
+            return Ok(MapToDto(gs));
         }
 
         // POST: api/GameSettings
@@ -74,10 +75,17 @@ namespace SC_Backend.Controllers
                 WinCondition = dto.WinCondition,
                 HasPowerUps = dto.HasPowerUps
             };
-            _context.GameSettings.Add(gameSetting);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _gameSettingRepository.Add(gameSetting);
+                await _gameSettingRepository.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetGameSettingAsync), new { id = gameSetting.GameSettingsId }, MapToDto(gameSetting));
+                return CreatedAtAction(nameof(GetGameSettingAsync), new { id = gameSetting.GameSettingsId }, MapToDto(gameSetting));
+            }
+            catch(ArgumentNullException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
         #endregion CRUD
 
@@ -91,22 +99,7 @@ namespace SC_Backend.Controllers
             if (returnMessage != null)
                 return BadRequest(returnMessage);
 
-            // 1. Search for an exact match in the database
-            var existingSetting = await _context.GameSettings.FirstOrDefaultAsync(gs =>
-                gs.Width == dto.Width &&
-                gs.Height == dto.Height &&
-                gs.NumberOfMines == dto.NumberOfMines &&
-                gs.StartTimeSeconds == dto.StartTimeSeconds &&
-                gs.TeamSize == dto.TeamSize &&
-                gs.WinCondition == dto.WinCondition &&
-                gs.HasPowerUps == dto.HasPowerUps);
-
-            if (existingSetting != null)
-            {
-                return Ok(MapToDto(existingSetting));
-            }
-
-            var newSetting = new GameSetting
+            GameSetting gs = new GameSetting
             {
                 Width = dto.Width,
                 Height = dto.Height,
@@ -116,24 +109,26 @@ namespace SC_Backend.Controllers
                 WinCondition = dto.WinCondition,
                 HasPowerUps = dto.HasPowerUps
             };
+            
+            
+            var setting = await _gameSettingRepository.GetOrCreateSettingAsync(gs);
 
-            _context.GameSettings.Add(newSetting);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetGameSettingAsync), new { id = newSetting.GameSettingsId }, MapToDto(newSetting));
+            if (setting != null)
+            {
+                return Ok(MapToDto(setting));
+            }
+            else
+            {
+                return CreatedAtAction(nameof(GetGameSettingAsync), new { id = gs.GameSettingsId }, MapToDto(gs));
+            }
         }
 
         [HttpGet("standard-modes")]
         public async Task<ActionResult<IEnumerable<GameSettingDto>>> GetStandardModesAsync()
         {
-            // Example: Fetch known classic configurations without powerups
-            var standardModes = await _context.GameSettings
-                .Where(gs => !gs.HasPowerUps && gs.TeamSize == 1)
-                .OrderBy(gs => gs.Width * gs.Height) // Order by board size
-                .Take(3) // Beginner, Intermediate, Expert
-                .ToListAsync();
+            var modes = await _gameSettingRepository.GetStandardModesAsync();
 
-            return Ok(standardModes.Select(MapToDto));
+            return Ok(modes.Select(MapToDto));
         }
 
         private static string? CheckDto(GameSettingDto dto)
@@ -148,11 +143,17 @@ namespace SC_Backend.Controllers
                 return "Board must have at least 1 mine";
             if (dto.StartTimeSeconds == null && dto.WinCondition != WinConditions.Race)
                 return "No set time is allowed only for race mode.";
-            if (dto.StartTimeSeconds != null &&
-                dto.StartTimeSeconds >=30 &&
-                dto.StartTimeSeconds <= 12000 &&
-                dto.WinCondition == WinConditions.Race)
+
+            if (dto.WinCondition == WinConditions.Race && dto.StartTimeSeconds != null)
                 return "Race mode is not allowed to have a set time.";
+            if (dto.WinCondition != WinConditions.Race)
+            {
+                if (dto.StartTimeSeconds == null)
+                    return "No set time is allowed only for race mode.";
+                if (dto.StartTimeSeconds < 30 || dto.StartTimeSeconds > 12000)
+                    return "Start time must be between 30 and 12000 seconds.";
+            }
+
             if (dto.TeamSize <= 0)
                 return "Team size cannot be negative or 0.";
             if (!Enum.IsDefined(typeof(WinConditions), dto.WinCondition))
@@ -166,7 +167,6 @@ namespace SC_Backend.Controllers
         {
             return new GameSettingDto
             {
-                GameSettingsId = gs.GameSettingsId,
                 Width = gs.Width,
                 Height = gs.Height,
                 NumberOfMines = gs.NumberOfMines,
@@ -176,9 +176,9 @@ namespace SC_Backend.Controllers
                 HasPowerUps = gs.HasPowerUps
             };
         }
-        private bool GameSettingExists(int id)
+        private async Task<bool> GameSettingExists(int id)
         {
-            return _context.GameSettings.Any(e => e.GameSettingsId == id);
+            return await _gameSettingRepository.GetAsync(id) != null;
         }
     }
 }

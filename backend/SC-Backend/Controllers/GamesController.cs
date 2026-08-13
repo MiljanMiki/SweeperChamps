@@ -100,7 +100,7 @@ namespace SC_Backend.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!GameExists(id))
+                if (await GameExists(id) == false)
                 {
                     return NotFound();
                 }

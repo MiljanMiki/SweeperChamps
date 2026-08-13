@@ -67,7 +67,7 @@ namespace SC_Backend.Repositories
         /// <returns>All games that satisfy the criteria.</returns>
         public async Task<IEnumerable<Game>> FilterGameByStatusAndDateAsync(GameStatuses status, DateTime? date = null, bool day = false, bool month = false, bool year = false)
         {
-            var query = _context.Games.Where(g => g.Status == status);
+            var query = _context.Games.AsNoTracking().Where(g => g.Status == status);
 
             if (date != null)
             {
@@ -85,7 +85,8 @@ namespace SC_Backend.Repositories
         }
         public async Task<IEnumerable<Game>> FilterByDurationAsync(int durationSeconds, bool longer)
         {
-            var query = _context.Games.Where(g => g.Status == GameStatuses.Finished && g.EndTime != null);//za svaki slucaj i null check
+            var query = _context.Games.AsNoTracking()
+                .Where(g => g.Status == GameStatuses.Finished && g.EndTime != null);//za svaki slucaj i null check
             query = longer ?
                 query.Where(g => EF.Functions.DateDiffSecond(g.StartTime, g.EndTime) > durationSeconds) :
                 query.Where(g => EF.Functions.DateDiffSecond(g.StartTime, g.EndTime) <= durationSeconds);

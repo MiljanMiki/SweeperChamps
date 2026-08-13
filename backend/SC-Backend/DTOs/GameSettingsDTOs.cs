@@ -5,7 +5,6 @@ namespace SC_Backend.DTOs.GameSettings
 
     public record GameSettingDto
     {
-        public int GameSettingsId { get; set; }
         public int Width { get; set; }
 
         public int Height { get; set; }
