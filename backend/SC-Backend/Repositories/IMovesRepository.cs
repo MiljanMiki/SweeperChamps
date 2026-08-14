@@ -2,7 +2,7 @@
 
 namespace SC_Backend.Repositories
 {
-    public interface IMovesRepisotiory : IAsyncRepository<Move>
+    public interface IMovesRepository : IAsyncRepository<Move>
     {
     }
 }

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
+using SC_Backend.Repositories;
+using SC_Backend.DTOs.Moves;
 
 namespace SC_Backend.Controllers
 {
@@ -14,53 +16,59 @@ namespace SC_Backend.Controllers
     [ApiController]
     public class MovesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly  IMovesRepository _movesRepository;
 
-        public MovesController(ApplicationDbContext context)
+        public MovesController(IMovesRepository repo)
         {
-            _context = context;
+            _movesRepository = repo;
         }
 
         // GET: api/Moves
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Move>>> GetMovesAsync()
+        public async Task<ActionResult<IEnumerable<MoveDTO>>> GetMovesAsync()
         {
-            return await _context.Moves.ToListAsync();
+            var moves = await _movesRepository.GetAllAsync();
+            return Ok(moves.Select(MapToDto).ToList());
         }
 
         // GET: api/Moves/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Move>> GetMoveAsync(int id)
+        public async Task<ActionResult<MoveDTO>> GetMoveAsync(int id)
         {
-            var move = await _context.Moves.FindAsync(id);
+            if (id <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
+            var move = await _movesRepository.GetAsync(id);
 
             if (move == null)
             {
-                return NotFound();
+                return NotFound("Move with given id does not exist");
             }
 
-            return move;
+            return Ok(MapToDto(move));
         }
 
         // PUT: api/Moves/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutMoveAsync(int id, Move move)
+        public async Task<IActionResult> PutMoveAsync(int id, string newMoveLog)
         {
-            if (id != move.MovesId)
-            {
-                return BadRequest();
-            }
+            if(id <= 0 )
+                return BadRequest("ID cannot be negative or 0");
 
-            _context.Entry(move).State = EntityState.Modified;
+            var move = await _movesRepository.GetAsync(id);
+            if (move == null)
+                return BadRequest($"Move with id {id} does not exist");
+
+            move.MoveLog = newMoveLog;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _movesRepository.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!MoveExists(id))
+                if (await MoveExists(id) == false)
                 {
                     return NotFound();
                 }
@@ -76,33 +84,67 @@ namespace SC_Backend.Controllers
         // POST: api/Moves
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Move>> PostMoveAsync(Move move)
+        public async Task<ActionResult<Move>> PostMoveAsync(MoveDTO dto)
         {
-            _context.Moves.Add(move);
-            await _context.SaveChangesAsync();
+            if (dto.GameId <= 0)
+                return BadRequest("FK to Game cannot be negative or 0");
+            try
+            {
+                Move move = new Move
+                {
+                    GameId = dto.GameId,
+                    MoveLog = dto.MoveLog
+                };
 
-            return CreatedAtAction("GetMove", new { id = move.MovesId }, move);
+                _movesRepository.Add(move);
+                await _movesRepository.SaveChangesAsync();
+
+                return CreatedAtAction("GetMove", new { id = move.MovesId }, move);
+            }
+            catch(Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+            
         }
 
         // DELETE: api/Moves/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMoveAsyncAsync(int id)
         {
-            var move = await _context.Moves.FindAsync(id);
+            if(id <=0)
+            {
+                return BadRequest("ID cannot be negative or 0");
+            }
+            var move = await _movesRepository.GetAsync(id);
             if (move == null)
             {
-                return NotFound();
+                return NotFound($"ID {id} does not exist in the database.");
             }
 
-            _context.Moves.Remove(move);
-            await _context.SaveChangesAsync();
-
+            try
+            {
+                _movesRepository.Delete(move);
+                await _movesRepository.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
             return NoContent();
         }
 
-        private bool MoveExists(int id)
+        private static MoveDTO MapToDto(Move move)
         {
-            return _context.Moves.Any(e => e.MovesId == id);
+            return new MoveDTO
+            {
+                GameId = move.GameId,
+                MoveLog = move.MoveLog
+            };
+        }
+        private async Task<bool> MoveExists(int id)
+        {
+            return await _movesRepository.GetAsync(id) != null;
         }
     }
 }

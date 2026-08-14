@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace SC_Backend.Repositories
 {
-    public class MovesRepository : IMovesRepisotiory
+    public class MovesRepository : IMovesRepository
     {
         private readonly ApplicationDbContext _context;
 
@@ -15,7 +15,7 @@ namespace SC_Backend.Repositories
         }
         public async Task<Move?> GetAsync(int id)
         {
-            return await _context.Moves.FindAsync(id);
+            return await _context.Moves.AsNoTracking().FirstOrDefaultAsync(move => move.MovesId == id);
         }
 
         public async Task<IEnumerable<Move>> GetAllAsync()
