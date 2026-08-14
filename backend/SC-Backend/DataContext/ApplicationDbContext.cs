@@ -123,6 +123,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Elo).HasDefaultValue((short)0);
             entity.Property(e => e.UserRole).HasConversion<string>();
             entity.Property(e => e.UserRole).HasDefaultValueSql("'NotSet'::character varying");
+            entity.Property(e => e.Datecreated).HasDefaultValueSql("CURRENT_DATE");
         });
 
         modelBuilder.Entity<User>(entity =>

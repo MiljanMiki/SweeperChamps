@@ -39,10 +39,9 @@ namespace SC_Backend.Controllers;
             {
                 Username = registerDto.Username,
                 Email = registerDto.Email,
-                //PasswordHash = _authService.HashPassword(registerDto.Password),
+                PasswordHash = _authService.HashPassword(registerDto.Password),
                 UserRole = UserRoles.User,
                 Datecreated = DateOnly.FromDateTime(DateTime.Now),
-                //SlikaURL = registerDto.SlikaURL
             };
 
             // Prvi korisnik postaje admin
@@ -87,8 +86,8 @@ namespace SC_Backend.Controllers;
             if (korisnik == null)
                 return Unauthorized(new { message = "Pogrešno korisničko ime ili lozinka" });
 
-            //if (!_authService.VerifyPassword(loginDto.Password, korisnik.PasswordHash))
-              //  return Unauthorized(new { message = "Pogrešno korisničko ime ili lozinka" });
+            if (!_authService.VerifyPassword(loginDto.Password, korisnik.PasswordHash))
+                return Unauthorized(new { message = "Pogrešno korisničko ime ili lozinka" });
 
             // Generisanje tokena
             var token = _authService.GenerateJwtToken(korisnik);
@@ -104,7 +103,6 @@ namespace SC_Backend.Controllers;
                     Email = korisnik.Email,
                     CreatedAt = korisnik.Datecreated,
                     Elo = korisnik.Elo ?? 0,
-                    //SlikaUrl = korisnik.SlikaURL
                 }
             };
 

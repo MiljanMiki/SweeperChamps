@@ -20,10 +20,6 @@ namespace SC_Backend.DTOs
     }
     public record RegisterDto
     {
-        [Key]
-        [Column("ID")]
-        public int ID { get; set; }
-
         [Required]
         [Column("Username")]
         [MaxLength(50)]

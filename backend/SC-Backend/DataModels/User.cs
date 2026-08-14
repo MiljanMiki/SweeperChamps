@@ -19,6 +19,11 @@ public partial class User
     [StringLength(60)]
     public string Email { get; set; } = null!;
 
+    [Column("password_hash")]
+    [MinLength(59)]
+    [MaxLength(60)]
+    public string PasswordHash { get; set; } = null!;
+
     [Column("datecreated")]
     public DateOnly Datecreated { get; set; }
 
@@ -27,7 +32,7 @@ public partial class User
 
     [Column("user_role")]
     [StringLength(20)]
-    public UserRoles? UserRole { get; set; }
+    public UserRoles UserRole { get; set; }
 
     [Key]
     [Column("users_id")]
