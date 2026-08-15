@@ -16,7 +16,6 @@ namespace SC_Backend.DTOs
         public string Email { get; set; }
         public DateOnly CreatedAt { get; set; }
         public short Elo { get; set; }
-        public string SlikaUrl { get; set; }
     }
     public record RegisterDto
     {
@@ -45,7 +44,6 @@ namespace SC_Backend.DTOs
 
         [Column("Elo")]
         public int Elo { get; set; }
-        public string SlikaURL { get; set; }
     }
     public record LoginDto
     {
