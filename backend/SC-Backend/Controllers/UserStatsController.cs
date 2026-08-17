@@ -1,12 +1,17 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Mono.TextTemplating;
+using SC_Backend.DataContext;
+using SC_Backend.DataModels;
+using SC_Backend.DTOs.GameSettings;
+using SC_Backend.DTOs.Users;
+using SC_Backend.DTOs.UserStats;
+using SC_Backend.Repositories;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SC_Backend.DataContext;
-using SC_Backend.DataModels;
 
 namespace SC_Backend.Controllers
 {
@@ -14,55 +19,65 @@ namespace SC_Backend.Controllers
     [ApiController]
     public class UserStatsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IUserStatsRepository _userStatsRepository;
 
-        public UserStatsController(ApplicationDbContext context)
+        public UserStatsController(IUserStatsRepository userStatsRepository)
         {
-            _context = context;
+            _userStatsRepository = userStatsRepository;
         }
 
         // GET: api/UserStats
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<UserStats>>> GetUserStatsAsync()
+        [HttpGet("get-all")]
+        public async Task<ActionResult<IEnumerable<UserStatDTO>>> GetUserStatsAsync()
         {
-            return await _context.UserStats.ToListAsync();
+            return Ok((await _userStatsRepository.GetAllAsync()).Select(MapToDto).ToList());
         }
 
         // GET: api/UserStats/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<UserStats>> GetUserStatsAsync(int id)
+        [HttpGet("{userID}/{gameSettingID}/{isRanked}")]
+        public async Task<ActionResult<UserStatDTO>> GetUserStatsAsync(int userID,int gameSettingID, bool isRanked)
         {
-            var userStats = await _context.UserStats.FindAsync(id);
+            if (userID <= 0 || gameSettingID <= 0)
+                return BadRequest("FK values cannot be less than or equal to 0");
+
+            var userStats = await _userStatsRepository.GetStatAsync(userID,gameSettingID,isRanked);
 
             if (userStats == null)
             {
-                return NotFound();
+                return NotFound($"{nameof(UserStats)} does not exist with the given FK ids");
             }
 
-            return userStats;
+            return Ok(MapToDto(userStats));
         }
 
         // PUT: api/UserStats/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutUserStatsAsync(int id, UserStats userStats)
+        [HttpPut("put")]
+        public async Task<IActionResult> PutUserStatsAsync(FullStatDTO dto)
         {
-            if (id != userStats.GameSettingId)
-            {
-                return BadRequest();
-            }
+            var retMessage = CheckFullDTO(dto);
+            if (retMessage != null)
+                return BadRequest(retMessage);
 
-            _context.Entry(userStats).State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                var stat = await _userStatsRepository.GetStatAsync(dto.UserId, dto.GameSettingId, dto.IsRanked);
+                if(stat == null)
+                    return NotFound($"{nameof(UserStats)} does not exist with the given FK ids");
+
+                stat.GamesPlayed = dto.GamesPlayed;
+                stat.Wins = dto.Wins;
+                stat.Losses = dto.Losses;
+                stat.PlayTime = dto.PlayTime;
+
+                await _userStatsRepository.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!UserStatsExists(id))
+                if (!await UserStatsExists(dto.UserId,dto.GameSettingId,dto.IsRanked))
                 {
-                    return NotFound();
+                    return NotFound("Stat with passed FKs does not exist.");
                 }
                 else
                 {
@@ -76,18 +91,37 @@ namespace SC_Backend.Controllers
         // POST: api/UserStats
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<UserStats>> PostUserStatsAsync(UserStats userStats)
+        public async Task<ActionResult<UserStats>> PostUserStatsAsync(FullStatDTO dto)
         {
-            _context.UserStats.Add(userStats);
+            var retMessage = CheckFullDTO(dto);
+            if (retMessage != null)
+                return BadRequest(retMessage);
+
+            var userStats = new UserStats
+            {
+                GameSettingId = dto.GameSettingId,
+                UserId = dto.UserId,
+                IsRanked = dto.IsRanked,
+                GamesPlayed = dto.GamesPlayed,
+                Wins = dto.Wins,
+                Losses = dto.Losses,
+                PlayTime = dto.PlayTime
+            };
+
             try
             {
-                await _context.SaveChangesAsync();
+
+                _userStatsRepository.Add(userStats);
+                await _userStatsRepository.SaveChangesAsync();
+
+                return CreatedAtAction("GetUserStats", new { id1 = userStats.GameSettingId,id2=userStats.UserId,id3=userStats.IsRanked }, userStats);
+
             }
             catch (DbUpdateException)
             {
-                if (UserStatsExists(userStats.GameSettingId))
+                if (await UserStatsExists(userStats.UserId, userStats.GameSettingId,userStats.IsRanked))
                 {
-                    return Conflict();
+                    return Conflict($"User stat already exists with these keys: UserID:{userStats.UserId}, GameSettign: {userStats.GameSettingId}, IsRanked: {userStats.IsRanked}");
                 }
                 else
                 {
@@ -95,28 +129,155 @@ namespace SC_Backend.Controllers
                 }
             }
 
-            return CreatedAtAction("GetUserStats", new { id = userStats.GameSettingId }, userStats);
         }
-
+        
         // DELETE: api/UserStats/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUserStatsAsync(int id)
+        [HttpDelete("{userID}/{gameSettignID}/{isRanked}")]
+        public async Task<IActionResult> DeleteUserStatsAsync(int userID,int gameSettignID,bool isRanked)
         {
-            var userStats = await _context.UserStats.FindAsync(id);
+            var userStats = await _userStatsRepository.GetStatAsync(userID,gameSettignID,isRanked);
             if (userStats == null)
             {
-                return NotFound();
+                return NotFound($"User stat doesnt exist with these keys: UserID:{userID}, GameSettign: {gameSettignID}, IsRanked: {isRanked}");
             }
 
-            _context.UserStats.Remove(userStats);
-            await _context.SaveChangesAsync();
+            _userStatsRepository.Delete(userStats);
+            await _userStatsRepository.SaveChangesAsync();
 
             return NoContent();
         }
 
-        private bool UserStatsExists(int id)
+        [HttpGet("loaded")]
+        public async Task<ActionResult<LoadedStatDto?>> GetLoadedStatAsync(int userID, int gameSettignID, bool isRanked)
         {
-            return _context.UserStats.Any(e => e.GameSettingId == id);
+            var stat = await _userStatsRepository.GetStatsWithLoadedPropertiesAsync(userID, gameSettignID, isRanked);
+            if (stat == null)
+                return BadRequest($"User stat doesnt exist with these keys: UserID:{userID}, GameSettign: {gameSettignID}, IsRanked: {isRanked}");
+
+            return Ok(MakeLoadedStat(stat, true, true));
+        }
+
+        //Can be for a specific gamemode/setting 
+        [HttpGet("user-allstats")]
+        public async Task<ActionResult<IEnumerable<FullStatDTO>>> GetAllUserStatsAsync(int userID, int? gameSettingID, bool isRanked, bool loadNav)
+        {
+            if (userID <= 0 || gameSettingID <= 0)
+                return BadRequest("FK ids cannot be negative or 0.");
+            var stats = await _userStatsRepository.GetAllStatsOfUserAsync(userID, gameSettingID, isRanked, loadNav);
+
+            return Ok(stats.Select(s => MakeLoadedStat(s, true, gameSettingID.HasValue)).ToList());
+        }
+
+        [HttpGet("leaderboard")]
+        public async Task<ActionResult<IEnumerable<LeaderboardDTO>>> GetLeaderboardAsync(int gameSettingId, bool isRanked, int topCount)
+        {
+            if (gameSettingId <= 0)
+                return BadRequest($"FK to {nameof(GameSetting)} cannot be negative or 0.");
+
+            var leaderboard = await _userStatsRepository.GetTopPlayersForSettingAsync(gameSettingId, isRanked, topCount);
+
+            return leaderboard.Select(s => new LeaderboardDTO
+            {
+                Username = s.User.Username,
+                Elo = s.User.Elo,
+                GameSettingId = s.GameSettingId,
+                UserStat = MapToDto(s),
+                WinRatePercentage = s.Wins/s.GamesPlayed * 100
+            }).ToList();
+        }
+
+        [HttpPost("record-game-end")]
+        public async Task<ActionResult>RecordGameEndingAsync(int userId, int gameSettingId, bool isRanked, bool isWin, long matchDuration)
+        {
+            if (userId<= 0)
+                return BadRequest($"FK to {nameof(User)} cannot be negative or 0.");
+            if (gameSettingId <= 0)
+                return BadRequest($"FK to {nameof(GameSetting)} cannot be negative or 0.");
+            if (matchDuration < 0)
+                return BadRequest("Match duration cannot be negative.");
+
+            try
+            {
+                await _userStatsRepository.RecordMatchResultAsync(userId, gameSettingId, isRanked, isWin, matchDuration);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        private static UserStatDTO MapToDto(UserStats stats)
+        {
+            return new UserStatDTO
+            {
+                GamesPlayed = stats.GamesPlayed,
+                Wins = stats.Wins,
+                Losses = stats.Losses,
+                IsRanked = stats.IsRanked,
+                PlayTime = stats.PlayTime,
+            };
+        }
+
+        private static string? CheckFullDTO(FullStatDTO dto)
+        {
+            if (dto == null)
+                return "DTO is null";
+
+            if (dto.GameSettingId <= 0 || dto.UserId <= 0)
+                return "FK to GameSetting/User cannot be negative or 0";
+
+            if (dto.GamesPlayed < 0 || dto.Wins < 0 || dto.Losses < 0 || dto.PlayTime < 0)
+                return "None of the following attributes can be negative: GamesPlayed, Wins, Losses and PlayTime";
+
+            if ((dto.Wins + dto.Losses) > dto.GamesPlayed)
+                return "Sum of Wins+Losses cannot be greater than GamesPlayed";
+
+            return null;
+        }
+
+        private static LoadedStatDto MakeLoadedStat(UserStats stat,bool userLoaded, bool settingsLoaded)
+        {
+            UserDTO? user = null;
+            if(userLoaded)
+            {
+                user = new UserDTO
+                {
+                    Username = stat.User.Username,
+                    Email = stat.User.Email,
+                    Datecreated = stat.User.Datecreated,
+                    Elo = stat.User.Elo,
+                    UserRole = stat.User.UserRole
+                };
+            }
+
+            GameSettingDto? setting = null;
+            if (settingsLoaded)
+            {
+                setting = new GameSettingDto
+                {
+                    Width = stat.GameSetting.Width,
+                    Height = stat.GameSetting.Height,
+                    NumberOfMines = stat.GameSetting.NumberOfMines,
+                    StartTimeSeconds = stat.GameSetting.StartTimeSeconds,
+                    TeamSize = stat.GameSetting.TeamSize,
+                    WinCondition = stat.GameSetting.WinCondition,
+                    HasPowerUps = stat.GameSetting.HasPowerUps
+                };
+            }
+            return new LoadedStatDto
+            {
+                GamesPlayed = stat.GamesPlayed,
+                Wins = stat.Wins,
+                Losses = stat.Losses,
+                PlayTime = stat.PlayTime,
+                IsRanked = stat.IsRanked,
+                SettingSummary = setting,
+                UserSummary = user
+            };
+        }
+        private async Task<bool> UserStatsExists(int playerID, int gameSettingID, bool isRanked)
+        {
+            return await _userStatsRepository.GetStatAsync(playerID,gameSettingID,isRanked) != null;
         }
     }
 }

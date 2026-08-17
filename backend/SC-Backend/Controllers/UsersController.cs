@@ -215,8 +215,6 @@ namespace SC_Backend.Controllers
             return dto;
         }
 
-
-
         [HttpGet("filter-users")]
         public async Task<ActionResult<IEnumerable<UserDTO>>> FilterUsers([FromBody] UserFilteringDTO dto)
         {

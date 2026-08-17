@@ -8,5 +8,7 @@ namespace SC_Backend.Repositories
     {
         Task<GameSetting?> GetOrCreateSettingAsync(GameSetting setting);
         Task<IEnumerable<GameSetting>> GetStandardModesAsync();
+
+        //GetMostPlayedGameMode
     }
 }
