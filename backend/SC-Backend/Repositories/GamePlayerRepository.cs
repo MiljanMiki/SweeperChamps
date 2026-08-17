@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace SC_Backend.Repositories
 {
-    public class GamePlayerAsyncRepository : IGamePlayerAsyncRepository
+    public class GamePlayerRepository : IGamePlayerRepository
     {
         private readonly ApplicationDbContext _context;
 
-        public GamePlayerAsyncRepository(ApplicationDbContext context)
+        public GamePlayerRepository(ApplicationDbContext context)
         {
             _context = context;
         }

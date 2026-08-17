@@ -9,6 +9,7 @@ using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.Repositories;
 using SC_Backend.DTOs.Moves;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 namespace SC_Backend.Controllers
 {
@@ -17,7 +18,6 @@ namespace SC_Backend.Controllers
     public class MovesController : ControllerBase
     {
         private readonly  IMovesRepository _movesRepository;
-
         public MovesController(IMovesRepository repo)
         {
             _movesRepository = repo;
@@ -51,16 +51,21 @@ namespace SC_Backend.Controllers
         // PUT: api/Moves/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutMoveAsync(int id, string newMoveLog)
+        public async Task<IActionResult> PutMoveAsync(int id, PutDTO dto)
         {
             if(id <= 0 )
                 return BadRequest("ID cannot be negative or 0");
 
+            if (dto == null)
+                return BadRequest("DTO cannot be null");
+            if (string.IsNullOrEmpty(dto.MoveLog))
+                return BadRequest("MoveLog cannot be null or empty");
+
             var move = await _movesRepository.GetAsync(id);
             if (move == null)
-                return BadRequest($"Move with id {id} does not exist");
+                return NotFound($"Move with id {id} does not exist");
 
-            move.MoveLog = newMoveLog;
+            move.MoveLog = dto.MoveLog;
 
             try
             {
@@ -110,7 +115,7 @@ namespace SC_Backend.Controllers
 
         // DELETE: api/Moves/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteMoveAsyncAsync(int id)
+        public async Task<IActionResult> DeleteMoveAsync(int id)
         {
             if(id <=0)
             {
@@ -134,8 +139,42 @@ namespace SC_Backend.Controllers
             return NoContent();
         }
 
+        [HttpGet("get-from-game/{gameId}")]
+        public async Task<ActionResult<MoveDTO>> GetByGameIdAsync(int gameId)
+        {
+            if(gameId <=0)
+                return BadRequest("ID cannot be negative or 0");
+            var move = await _movesRepository.GetByGameIdAsync(gameId);
+            if (move == null)
+                return NotFound($"{nameof(Move)} not found from game ID {gameId}");
+            return Ok(MapToDto(move));
+        }
+
+        [HttpDelete("delete-from-game/{gameId}")]
+        public async Task<IActionResult> DeleteByGameIdAsync(int gameId)
+        {
+            if (gameId <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
+            await _movesRepository.DeleteByGameIdAsync(gameId);
+
+            return NoContent();
+        }
+
+        [HttpGet("has-moves/{gameId}")]
+        public async Task<ActionResult<bool>> HasMovesForGameAsync(int gameId)
+        {
+            if (gameId <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
+            return await _movesRepository.HasMovesForGameAsync(gameId);
+        }
+
+
         private static MoveDTO MapToDto(Move move)
         {
+            ArgumentNullException.ThrowIfNull(move);
+
             return new MoveDTO
             {
                 GameId = move.GameId,

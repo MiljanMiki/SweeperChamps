@@ -17,7 +17,7 @@ namespace SC_Backend.Tests.Controllers
     public class GamePlayersControllerTests
     {
         private ApplicationDbContext _context;
-        private GamePlayerAsyncRepository _repository;
+        private GamePlayerRepository _repository;
         private GamePlayersController _controller;
 
         [SetUp]
@@ -29,7 +29,7 @@ namespace SC_Backend.Tests.Controllers
                 .Options;
 
             _context = new ApplicationDbContext(options);
-            _repository = new GamePlayerAsyncRepository(_context);
+            _repository = new GamePlayerRepository(_context);
             _controller = new GamePlayersController(_repository);
 
             // Seed Initial Data

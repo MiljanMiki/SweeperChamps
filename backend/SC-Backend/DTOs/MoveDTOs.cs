@@ -6,4 +6,10 @@
 
         public string MoveLog { get; set; }
     }
+
+    public record PutDTO
+    {
+        public string MoveLog { get; set; } = null!;
+    }
+
 }

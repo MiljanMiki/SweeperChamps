@@ -47,22 +47,29 @@ namespace SC_Backend.Repositories
             ArgumentNullException.ThrowIfNull(username);
             ArgumentNullException.ThrowIfNull(email);
 
-            var list = await _context.Users.AsNoTracking().Where(user => user.Username == username || user.Email == email).ToListAsync();
-            if (list.Count != 0)
-                return false;
-            return true;
+            return !await _context.Users.AnyAsync(user => user.Username == username || user.Email == email);
         }
 
-        public async Task<IEnumerable<User>> FilterUsersAsync(DateOnly? dateCreated,bool? before , short? elo, bool? bigger, UserRoles? role)
+        public async Task<IEnumerable<User>> FilterUsersAsync(DateOnly? dateCreated,bool? before , short? elo, bool? smaller, UserRoles? role)
         {
-            if (dateCreated == null && before == null && elo == null && bigger == null && role == null)
+            if (dateCreated == null && before == null && elo == null && smaller == null && role == null)
                 throw new ArgumentNullException("All arguments are null. Atleast one must have a non null value.");
 
             var query = _context.Users.AsNoTracking();
-            if (dateCreated.HasValue && before.HasValue)
-                query = query.Where(user => before.Value ? user.Datecreated < dateCreated : user.Datecreated >= dateCreated);
-            if(elo.HasValue && bigger.HasValue)
-                query = query.Where(user => bigger.Value ? user.Elo < elo: user.Elo >= elo);
+            if (dateCreated.HasValue)
+            {
+                if (before.HasValue)
+                    query = query.Where(user => before.Value ? user.Datecreated < dateCreated : user.Datecreated >= dateCreated);
+                else
+                    query = query.Where(user => user.Datecreated == dateCreated);
+            }
+            if (elo.HasValue)
+            {
+                if(smaller.HasValue)
+                    query = query.Where(user => smaller.Value ? user.Elo < elo : user.Elo >= elo);
+                else
+                    query = query.Where(user => user.Elo == elo);
+            }
             if (role.HasValue)
                 query = query.Where(user => user.UserRole == role);
 

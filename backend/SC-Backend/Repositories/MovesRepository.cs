@@ -15,7 +15,7 @@ namespace SC_Backend.Repositories
         }
         public async Task<Move?> GetAsync(int id)
         {
-            return await _context.Moves.AsNoTracking().FirstOrDefaultAsync(move => move.MovesId == id);
+            return await _context.Moves.FindAsync(id);
         }
 
         public async Task<IEnumerable<Move>> GetAllAsync()
@@ -26,7 +26,7 @@ namespace SC_Backend.Repositories
         {
             ArgumentNullException.ThrowIfNull(entity, nameof(entity));
 
-            var game = _context.Moves.Find(entity.GameId);
+            var game = _context.Games.Find(entity.GameId);
             if (game == null)
                 throw new KeyNotFoundException($"FK {entity.GameId} of {nameof(Game)} does not exist in the database");
             _context.Moves.Add(entity);
@@ -46,6 +46,21 @@ namespace SC_Backend.Repositories
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<Move?> GetByGameIdAsync(int gameId)
+        {
+            return await _context.Moves.AsNoTracking().FirstOrDefaultAsync(m => m.GameId == gameId);
+        }
+
+        public async Task DeleteByGameIdAsync(int gameId)
+        {
+            await _context.Moves.Where(m => m.GameId == gameId).ExecuteDeleteAsync();
+        }
+
+        public async Task<bool> HasMovesForGameAsync(int gameId)
+        {
+            return await _context.Moves.AnyAsync(m => m.GameId == gameId);
         }
     }
 }

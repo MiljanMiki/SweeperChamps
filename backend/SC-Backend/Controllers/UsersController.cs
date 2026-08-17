@@ -27,7 +27,7 @@ namespace SC_Backend.Controllers
 
         // GET: api/Users
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsersAsync()
+        public async Task<ActionResult<IEnumerable<UserDTO>>> GetUsersAsync()
         {
             var list = await _userRepository.GetAllAsync();
             return Ok(list.Select(MapToDto).ToList());
@@ -35,7 +35,7 @@ namespace SC_Backend.Controllers
 
         // GET: api/Users/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUserAsync(int id)
+        public async Task<ActionResult<UserDTO>> GetUserAsync(int id)
         {
             if(id<=0)
                 return BadRequest("ID cannot be negative or 0.");
@@ -44,7 +44,7 @@ namespace SC_Backend.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return NotFound($"{nameof(User)} with the ID {id} was not found.");
             }
 
             return Ok(MapToDto(user));
@@ -62,20 +62,21 @@ namespace SC_Backend.Controllers
             if (String.IsNullOrWhiteSpace(dto.Username) ||
                 String.IsNullOrWhiteSpace(dto.Email))
                 return BadRequest("DTO string properties are null/empty/whitespace");
+            if (!Enum.IsDefined(typeof(UserRoles), dto.UserRole))
+                return BadRequest($"Enum {nameof(UserRoles)} does not have a defined value of {dto.UserRole}.");
+
 
             var user = await _userRepository.GetAsync(id);
             if(user == null)
-                return BadRequest($"Given {nameof(User)} ID does not exist in the database.");
-
-            if(!Enum.IsDefined(typeof(UserRoles), dto.UserRole))
-                return BadRequest($"Enum {nameof(UserRoles)} does not have a defined value of {dto.UserRole}.");
+                return NotFound($"Given {nameof(User)} ID does not exist in the database.");
 
             //ako bi postojale sezone, pa bi se na kraju svake sezone resetovao elo, ovo bi bilo lose...
             if (user.Elo != null && dto.Elo == null)
                 return BadRequest($"User already has a set elo. It can only be reset to 0 now.");
 
-            if (!(await _userRepository.IsUniqueUsernameOrEmailAsync(dto.Username,dto.Email)))
-                return BadRequest($"Username or email is already taken.");
+            if(user.Username != dto.Username || user.Email != dto.Email)
+                if (!(await _userRepository.IsUniqueUsernameOrEmailAsync(dto.Username,dto.Email)))
+                    return BadRequest($"Username or email is already taken.");
             
             try
             {
@@ -89,7 +90,7 @@ namespace SC_Backend.Controllers
             {
                 if (await UserExists(id) == false)
                 {
-                    return NotFound();
+                    return NotFound($"{nameof(User)} with the ID {id} does not exist");
                 }
                 else
                 {
@@ -162,7 +163,7 @@ namespace SC_Backend.Controllers
             return Ok(await _userRepository.GetLeaderboardAsync(topCount));
         }
 
-        [HttpGet("loaded-user/{id}/{history}/{stats")]
+        [HttpGet("loaded-user/{id}/{history}/{stats}")]
         public async Task<ActionResult<LoadedUserDTO>> GetLoadedUser(int id, bool history, bool stats)
         {
             if(id<=0)
@@ -170,7 +171,7 @@ namespace SC_Backend.Controllers
             var user = await _userRepository.GetUserWithLoadedProperties(id, history, stats);
 
             if (user == null)
-                return BadRequest($"{nameof(User)} with ID {id} does not exist.");
+                return NotFound($"{nameof(User)} with ID {id} was not found.");
 
             List<GamesHistoryDTO>? historyDTO = null;
             if(history)
@@ -216,7 +217,7 @@ namespace SC_Backend.Controllers
         }
 
         [HttpGet("filter-users")]
-        public async Task<ActionResult<IEnumerable<UserDTO>>> FilterUsers([FromBody] UserFilteringDTO dto)
+        public async Task<ActionResult<IEnumerable<UserDTO>>> FilterUsers([FromQuery] UserFilteringDTO dto)
         {
             if (dto == null)
                 return BadRequest("DTO is null");

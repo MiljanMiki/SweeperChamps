@@ -17,9 +17,9 @@ namespace SC_Backend.Controllers
     [ApiController]
     public class GamePlayersController : ControllerBase
     {
-        private readonly IGamePlayerAsyncRepository _gamePlayerRepository;
+        private readonly IGamePlayerRepository _gamePlayerRepository;
 
-        public GamePlayersController( IGamePlayerAsyncRepository gamePlayerRepository)
+        public GamePlayersController( IGamePlayerRepository gamePlayerRepository)
         {
             _gamePlayerRepository = gamePlayerRepository;
         }
