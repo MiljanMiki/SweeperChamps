@@ -42,7 +42,7 @@ namespace SC_Backend.DTOs.UserStats
         public short? Elo { get; set; }
         public int GameSettingId { get; set; }
         public UserStatDTO UserStat { get; set; } = null!;
-        public int WinRatePercentage { get; set; }
+        public double WinRatePercentage { get; set; }
     }
 
 

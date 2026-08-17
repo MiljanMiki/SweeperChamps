@@ -7,7 +7,7 @@ namespace SC_Backend.Repositories
     {
         Task<UserStats?> GetStatAsync(int userID, int gameSettingID, bool isRanked);
         Task<UserStats?> GetStatsWithLoadedPropertiesAsync(int userID, int gameSettingID,bool isRanked);
-        Task<IEnumerable<UserStats>> GetAllStatsOfUserAsync(int userID, int? gameSettingID = null, bool isRanked = false, bool loadNav =false);
+        Task<IEnumerable<UserStats>> GetAllStatsOfUserAsync(int userID, int? gameSettingID = null, bool? isRanked = null, bool loadNav =false);
 
         //Task<> GetOverallUserStatsAsync(int userId);//ovo bi mozda terbalo controller da implementira
         //Task<IEnumerable<UserStats>> GetHighestWinrateSettingsAsync(int topCount);

@@ -40,14 +40,21 @@ namespace SC_Backend.Controllers
             if (userID <= 0 || gameSettingID <= 0)
                 return BadRequest("FK values cannot be less than or equal to 0");
 
-            var userStats = await _userStatsRepository.GetStatAsync(userID,gameSettingID,isRanked);
-
-            if (userStats == null)
+            try
             {
-                return NotFound($"{nameof(UserStats)} does not exist with the given FK ids");
-            }
+                var userStats = await _userStatsRepository.GetStatAsync(userID, gameSettingID, isRanked);
 
-            return Ok(MapToDto(userStats));
+                if (userStats == null)
+                {
+                    return NotFound($"{nameof(UserStats)} does not exist with the given FK ids");
+                }
+
+                return Ok(MapToDto(userStats));
+            }
+            catch(Exception e)
+            {
+                return BadRequest(e.Message);
+            }
         }
 
         // PUT: api/UserStats/5
@@ -84,6 +91,10 @@ namespace SC_Backend.Controllers
                     throw;
                 }
             }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
 
             return NoContent();
         }
@@ -114,7 +125,7 @@ namespace SC_Backend.Controllers
                 _userStatsRepository.Add(userStats);
                 await _userStatsRepository.SaveChangesAsync();
 
-                return CreatedAtAction("GetUserStats", new { id1 = userStats.GameSettingId,id2=userStats.UserId,id3=userStats.IsRanked }, userStats);
+                return CreatedAtAction(nameof(GetUserStatsAsync), new { userID = userStats.UserId, gameSettingID = userStats.GameSettingId, isRanked = userStats.IsRanked }, userStats);
 
             }
             catch (DbUpdateException)
@@ -128,33 +139,51 @@ namespace SC_Backend.Controllers
                     throw;
                 }
             }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
 
         }
         
         // DELETE: api/UserStats/5
-        [HttpDelete("{userID}/{gameSettignID}/{isRanked}")]
-        public async Task<IActionResult> DeleteUserStatsAsync(int userID,int gameSettignID,bool isRanked)
+        [HttpDelete("{userID}/{gameSettingID}/{isRanked}")]
+        public async Task<IActionResult> DeleteUserStatsAsync(int userID,int gameSettingID,bool isRanked)
         {
-            var userStats = await _userStatsRepository.GetStatAsync(userID,gameSettignID,isRanked);
+            var userStats = await _userStatsRepository.GetStatAsync(userID, gameSettingID, isRanked);
             if (userStats == null)
             {
-                return NotFound($"User stat doesnt exist with these keys: UserID:{userID}, GameSettign: {gameSettignID}, IsRanked: {isRanked}");
+                return NotFound($"User stat doesnt exist with these keys: UserID:{userID}, GameSettign: {gameSettingID}, IsRanked: {isRanked}");
             }
 
-            _userStatsRepository.Delete(userStats);
-            await _userStatsRepository.SaveChangesAsync();
+            try
+            {
+                _userStatsRepository.Delete(userStats);
+                await _userStatsRepository.SaveChangesAsync();
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
         }
 
         [HttpGet("loaded")]
-        public async Task<ActionResult<LoadedStatDto?>> GetLoadedStatAsync(int userID, int gameSettignID, bool isRanked)
+        public async Task<ActionResult<LoadedStatDto?>> GetLoadedStatAsync(int userID, int gameSettingID, bool isRanked)
         {
-            var stat = await _userStatsRepository.GetStatsWithLoadedPropertiesAsync(userID, gameSettignID, isRanked);
-            if (stat == null)
-                return BadRequest($"User stat doesnt exist with these keys: UserID:{userID}, GameSettign: {gameSettignID}, IsRanked: {isRanked}");
+            try
+            {
+                var stat = await _userStatsRepository.GetStatsWithLoadedPropertiesAsync(userID, gameSettingID, isRanked);
+                if (stat == null)
+                    return NotFound($"User stat doesnt exist with these keys: UserID:{userID}, GameSettign: {gameSettingID}, IsRanked: {isRanked}");
 
-            return Ok(MakeLoadedStat(stat, true, true));
+                return Ok(MakeLoadedStat(stat, true, true));
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
         }
 
         //Can be for a specific gamemode/setting 
@@ -163,9 +192,16 @@ namespace SC_Backend.Controllers
         {
             if (userID <= 0 || gameSettingID <= 0)
                 return BadRequest("FK ids cannot be negative or 0.");
-            var stats = await _userStatsRepository.GetAllStatsOfUserAsync(userID, gameSettingID, isRanked, loadNav);
+            try
+            {
+                var stats = await _userStatsRepository.GetAllStatsOfUserAsync(userID, gameSettingID, isRanked, loadNav);
 
-            return Ok(stats.Select(s => MakeLoadedStat(s, true, gameSettingID.HasValue)).ToList());
+                return Ok(stats.Select(s => MakeLoadedStat(s, loadNav, gameSettingID.HasValue && loadNav)).ToList()); 
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
         }
 
         [HttpGet("leaderboard")]
@@ -174,16 +210,23 @@ namespace SC_Backend.Controllers
             if (gameSettingId <= 0)
                 return BadRequest($"FK to {nameof(GameSetting)} cannot be negative or 0.");
 
-            var leaderboard = await _userStatsRepository.GetTopPlayersForSettingAsync(gameSettingId, isRanked, topCount);
-
-            return leaderboard.Select(s => new LeaderboardDTO
+            try
             {
-                Username = s.User.Username,
-                Elo = s.User.Elo,
-                GameSettingId = s.GameSettingId,
-                UserStat = MapToDto(s),
-                WinRatePercentage = s.Wins/s.GamesPlayed * 100
-            }).ToList();
+                var leaderboard = await _userStatsRepository.GetTopPlayersForSettingAsync(gameSettingId, isRanked, topCount);
+
+                return Ok(leaderboard.Select(s => new LeaderboardDTO
+                {
+                    Username = s.User.Username,
+                    Elo = s.User.Elo,
+                    GameSettingId = s.GameSettingId,
+                    UserStat = MapToDto(s),
+                    WinRatePercentage = s.GamesPlayed == 0 ? 0 : ((double)s.Wins / s.GamesPlayed) * 100
+                }).ToList());
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
         }
 
         [HttpPost("record-game-end")]

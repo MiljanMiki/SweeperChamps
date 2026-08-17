@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
+using System.Configuration;
 using System.Threading.Tasks;
 
 namespace SC_Backend.Repositories
@@ -30,7 +31,7 @@ namespace SC_Backend.Repositories
             if (_context.Users.Find(entity.UserId) == null)
                 throw new KeyNotFoundException($"{nameof(User)} does not exist with ID {entity.UserId}");
             if (_context.GameSettings.Find(entity.GameSettingId) == null)
-                throw new KeyNotFoundException($"{nameof(GameSetting)} does not exist with ID {entity.GameSetting}");
+                throw new KeyNotFoundException($"{nameof(GameSetting)} does not exist with ID {entity.GameSettingId}");
 
             _context.UserStats.Add(entity);
         }
@@ -52,6 +53,7 @@ namespace SC_Backend.Repositories
 
         public async Task<UserStats?> GetStatAsync(int userID, int gameSettingID, bool isRanked)
         {
+            await CheckFK(userID, gameSettingID);
             return await _context.UserStats
                .FirstOrDefaultAsync(s => s.UserId == userID && s.GameSettingId == gameSettingID && s.IsRanked == isRanked);
         }
@@ -59,6 +61,7 @@ namespace SC_Backend.Repositories
 
         public async Task<UserStats?> GetStatsWithLoadedPropertiesAsync(int userID, int gameSettingID, bool isRanked)
         {
+            await CheckFK(userID, gameSettingID);
             return await _context.UserStats
                 .AsNoTracking()
                 .Include(s => s.GameSetting)
@@ -66,17 +69,24 @@ namespace SC_Backend.Repositories
                 .FirstOrDefaultAsync(s => s.UserId == userID && s.GameSettingId == gameSettingID && s.IsRanked == isRanked);
         }
 
-        public async Task<IEnumerable<UserStats>> GetAllStatsOfUserAsync(int userID, int? gameSettingID = null, bool isRanked = false, bool loadNav = false)
+        public async Task<IEnumerable<UserStats>> GetAllStatsOfUserAsync(int userID, int? gameSettingID = null, bool? isRanked = null, bool loadNav = false)
         {
-            var query = _context.UserStats.Where(s => s.UserId == userID).AsNoTracking();
+            await CheckFK(userID, gameSettingID);
+
+            var query = _context.UserStats.AsNoTracking().Where(s => s.UserId == userID);
 
             if (gameSettingID.HasValue && gameSettingID.Value > 0)
                 query = query.Where(s => s.GameSettingId == gameSettingID);
 
-            query = query.Where(s => isRanked ? s.IsRanked == true : s.IsRanked == false);
+            if(isRanked.HasValue)
+                query = query.Where(s => isRanked.Value ? s.IsRanked == true : s.IsRanked == false);
 
-            if(loadNav)
-                query = query.Include(s=>s.GameSetting).Include(s=>s.User);
+            if (loadNav)
+            {
+                if (gameSettingID.HasValue)
+                    query = query.Include(s => s.GameSetting);
+                query = query.Include(s => s.User);
+            }  
 
             return await query.ToListAsync();
         }
@@ -90,19 +100,19 @@ namespace SC_Backend.Repositories
 
         public async Task<IEnumerable<UserStats>> GetTopPlayersForSettingAsync(int gameSettingId, bool isRanked, int topCount)
         {
+            await CheckFK(null, gameSettingId);
+
             return await _context.UserStats
                 .AsNoTracking()
                 .Where(s => s.GameSettingId == gameSettingId && s.IsRanked == isRanked)
-                .OrderByDescending(s => s.GamesPlayed / s.Wins)
+                .OrderByDescending(s => s.GamesPlayed == 0 ? 0 : (double)s.Wins / s.GamesPlayed)
                 .Include(s => s.User)
                 .Take(topCount).ToListAsync();
-
         }
 
         public async Task RecordMatchResultAsync(int userId, int gameSettingId, bool isRanked, bool isWin, long matchDuration)
         {
-            if (userId <= 0 || gameSettingId <= 0)
-                throw new KeyNotFoundException("One or both of FKs are less than or equal to 0");
+            await CheckFK(userId, gameSettingId);
 
             var stat = await GetStatAsync(userId, gameSettingId, isRanked);
             if (stat == null)
@@ -116,6 +126,23 @@ namespace SC_Backend.Repositories
             stat.PlayTime += matchDuration;
 
             await SaveChangesAsync();
+        }
+
+        private async Task CheckFK(int? userID, int? gameSettingID)
+        {
+            if (userID.HasValue)
+            {
+                var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UsersId == userID.Value);
+                if (user == null)
+                    throw new KeyNotFoundException($"{nameof(User)} does not exist with ID {userID}");
+            }
+
+            if (gameSettingID.HasValue)
+            {
+                var setting = await _context.GameSettings.AsNoTracking().FirstOrDefaultAsync(s => s.GameSettingsId == gameSettingID.Value);
+                if (setting == null)
+                    throw new KeyNotFoundException($"{nameof(GameSetting)} does not exist with ID {gameSettingID}");
+            }
         }
 
     }
