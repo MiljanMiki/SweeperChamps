@@ -4,58 +4,22 @@ using SC_Backend.DataModels;
 
 namespace SC_Backend.Repositories
 {
-    public class UserRepository : IUserRepository
+    public class UserRepository :BaseAsyncRepository<User>, IUserRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public UserRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-        public async Task<User?> GetAsync(int id)
-        {
-            return await _context.Users.FindAsync(id);
-        }
-        public async Task<IEnumerable<User>> GetAllAsync()
-        {
-            return await _context.Users.AsNoTracking().ToListAsync();
-        }
-        public void Add(User entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-
-            _context.Users.Add(entity);
-        }
-
-        public void Delete(User entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-            _context.Users.Remove(entity);
-        }
-        public void Update(User entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-            _context.Users.Update(entity);
-        }
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
-
+        public UserRepository(ApplicationDbContext context) : base(context){}
         public async Task<bool> IsUniqueUsernameOrEmailAsync(string username, string email)
         {
             ArgumentNullException.ThrowIfNull(username);
             ArgumentNullException.ThrowIfNull(email);
 
-            return !await _context.Users.AnyAsync(user => user.Username == username || user.Email == email);
+            return !await DbSet.AnyAsync(user => user.Username == username || user.Email == email);
         }
-
         public async Task<IEnumerable<User>> FilterUsersAsync(DateOnly? dateCreated,bool? before , short? elo, bool? smaller, UserRoles? role)
         {
             if (dateCreated == null && before == null && elo == null && smaller == null && role == null)
                 throw new ArgumentNullException("All arguments are null. Atleast one must have a non null value.");
 
-            var query = _context.Users.AsNoTracking();
+            var query = DbSet.AsNoTracking();
             if (dateCreated.HasValue)
             {
                 if (before.HasValue)
@@ -78,29 +42,29 @@ namespace SC_Backend.Repositories
 
         public async Task ClearNotSetRolesAsync()
         {
-            await _context.Users.Where(user => user.UserRole == UserRoles.NotSet).ExecuteDeleteAsync();
+            await DbSet.Where(user => user.UserRole == UserRoles.NotSet).ExecuteDeleteAsync();
         }
 
         public async Task<User?> GetUserByUsernameAsync(string username)
         {
             ArgumentNullException.ThrowIfNull(username);
-            return await _context.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Username == username);
+            return await DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Username == username);
         }
 
         public async Task<User?> GetUserByEmailAsync(string email)
         {
             ArgumentNullException.ThrowIfNull(email);
-            return await _context.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Email == email);
+            return await DbSet.AsNoTracking().FirstOrDefaultAsync(user => user.Email == email);
         }
 
         public async Task<IEnumerable<User>> GetLeaderboardAsync(int topCount)
         {
-            return await _context.Users.AsNoTracking().Where(u=>u.Elo != null).OrderByDescending(user=> user.Elo).Take(topCount).ToListAsync();
+            return await DbSet.AsNoTracking().Where(u=>u.Elo != null).OrderByDescending(user=> user.Elo).Take(topCount).ToListAsync();
         }
 
         public async Task<User?> GetUserWithLoadedPropertiesAsync(int id, bool history, bool stats)
         {
-            var query = _context.Users.AsNoTracking();
+            var query = DbSet.AsNoTracking();
             
             if(history)
                 query = query.Include(u => u.GamePlayers);
@@ -112,7 +76,7 @@ namespace SC_Backend.Repositories
 
         public async Task<bool> AnyUserExists()
         {
-            return await _context.Users.AnyAsync();
+            return await DbSet.AnyAsync();
         }
     }
 }

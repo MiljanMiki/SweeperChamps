@@ -5,53 +5,22 @@ using SC_Backend.DTOs.Games;
 
 namespace SC_Backend.Repositories
 {
-    public class GameRepository : IGameRepository
+    public class GameRepository : BaseAsyncRepository<Game>,IGameRepository
     {
-        private readonly ApplicationDbContext _context;
 
-        public GameRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public GameRepository(ApplicationDbContext context): base(context) {}
 
-        public async Task<IEnumerable<Game>> GetAllAsync()
-        {
-            return await _context.Games.AsNoTracking().ToListAsync();
-        }
-
-        public async Task<Game?> GetAsync(int id)
-        {
-            return await _context.Games.FindAsync(id);
-        }
-        public void Add(Game entity)
+        public override void Add(Game entity)
         {
             ArgumentNullException.ThrowIfNull(entity);
 
-            var gameSetting = _context.GameSettings.Find(entity.GameSettingsId);
+            var gameSetting = Context.GameSettings.Find(entity.GameSettingsId);
             if (gameSetting == null)
             {
                 throw new KeyNotFoundException($"FK {entity.GameSettingsId} of {nameof(GameSetting)} does not map to any row.");
             }
 
-            _context.Games.Add(entity);
-        }
-
-        public void Update(Game entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-            _context.Games.Update(entity);
-        }
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
-        
-
-        public void Delete(Game entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-
-            _context.Games.Remove(entity);
+            DbSet.Add(entity);
         }
 
         ///  <summary>
@@ -67,7 +36,7 @@ namespace SC_Backend.Repositories
         /// <returns>All games that satisfy the criteria.</returns>
         public async Task<IEnumerable<Game>> FilterGameByStatusAndDateAsync(GameStatuses status, DateTime? date = null, bool day = false, bool month = false, bool year = false)
         {
-            var query = _context.Games.AsNoTracking().Where(g => g.Status == status);
+            var query = DbSet.AsNoTracking().Where(g => g.Status == status);
 
             if (date != null)
             {
@@ -85,7 +54,7 @@ namespace SC_Backend.Repositories
         }
         public async Task<IEnumerable<Game>> FilterByDurationAsync(int durationSeconds, bool longer)
         {
-            var query = _context.Games.AsNoTracking()
+            var query = DbSet.AsNoTracking()
                 .Where(g => g.Status == GameStatuses.Finished && g.EndTime != null);//za svaki slucaj i null check
             query = longer ?
                 query.Where(g => EF.Functions.DateDiffSecond(g.StartTime, g.EndTime) > durationSeconds) :
@@ -96,12 +65,12 @@ namespace SC_Backend.Repositories
 
         public async Task<Game?> GetLoadedGame(int id)
         {
-            return await _context.Games.AsNoTracking().Include(g => g.GameSettings).FirstOrDefaultAsync(g => g.GamesId == id);
+            return await DbSet.AsNoTracking().Include(g => g.GameSettings).FirstOrDefaultAsync(g => g.GamesId == id);
         }
 
         public async Task<IEnumerable<Game>> GetAllGamesWithSetting(int settingID)
         {
-            return await _context.Games.AsNoTracking().Where(g => g.GameSettingsId == settingID).ToListAsync();
+            return await DbSet.AsNoTracking().Where(g => g.GameSettingsId == settingID).ToListAsync();
         }
     }
 }

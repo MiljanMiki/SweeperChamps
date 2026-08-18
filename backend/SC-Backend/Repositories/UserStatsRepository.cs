@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using System.Configuration;
@@ -6,55 +7,29 @@ using System.Threading.Tasks;
 
 namespace SC_Backend.Repositories
 {
-    public class UserStatsRepository : IUserStatsRepository
+    public class UserStatsRepository :BaseAsyncRepository<UserStats>, IUserStatsRepository
     {
-        private readonly ApplicationDbContext _context;
+        public UserStatsRepository(ApplicationDbContext context) : base(context) { }
 
-
-        public UserStatsRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        public async Task<UserStats?> GetAsync(int id)
+        public override Task<UserStats?> GetAsync(int id)
         {
             throw new NotImplementedException("This function cannot be implemented because of incompatible keys");
         }
-        public async Task<IEnumerable<UserStats>> GetAllAsync()
-        {
-            return await _context.UserStats.AsNoTracking().ToListAsync();
-        }
-        public void Add(UserStats entity)
+        public override void Add(UserStats entity)
         {
             ArgumentNullException.ThrowIfNull(entity);
 
-            if (_context.Users.Find(entity.UserId) == null)
+            if (Context.Users.Find(entity.UserId) == null)
                 throw new KeyNotFoundException($"{nameof(User)} does not exist with ID {entity.UserId}");
-            if (_context.GameSettings.Find(entity.GameSettingId) == null)
+            if (Context.GameSettings.Find(entity.GameSettingId) == null)
                 throw new KeyNotFoundException($"{nameof(GameSetting)} does not exist with ID {entity.GameSettingId}");
 
-            _context.UserStats.Add(entity);
+            DbSet.Add(entity);
         }
-
-        public void Delete(UserStats entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-            _context.UserStats.Remove(entity);
-        }
-        public void Update(UserStats entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-            _context.UserStats.Update(entity);
-        }
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
-
         public async Task<UserStats?> GetStatAsync(int userID, int gameSettingID, bool isRanked)
         {
             await CheckFK(userID, gameSettingID);
-            return await _context.UserStats
+            return await DbSet
                .FirstOrDefaultAsync(s => s.UserId == userID && s.GameSettingId == gameSettingID && s.IsRanked == isRanked);
         }
 
@@ -62,7 +37,7 @@ namespace SC_Backend.Repositories
         public async Task<UserStats?> GetStatsWithLoadedPropertiesAsync(int userID, int gameSettingID, bool isRanked)
         {
             await CheckFK(userID, gameSettingID);
-            return await _context.UserStats
+            return await DbSet
                 .AsNoTracking()
                 .Include(s => s.GameSetting)
                 .Include(s => s.User)
@@ -73,7 +48,7 @@ namespace SC_Backend.Repositories
         {
             await CheckFK(userID, gameSettingID);
 
-            var query = _context.UserStats.AsNoTracking().Where(s => s.UserId == userID);
+            var query = DbSet.AsNoTracking().Where(s => s.UserId == userID);
 
             if (gameSettingID.HasValue && gameSettingID.Value > 0)
                 query = query.Where(s => s.GameSettingId == gameSettingID);
@@ -93,7 +68,7 @@ namespace SC_Backend.Repositories
 
         //public async Task<IEnumerable<UserStats>> GetHighestWinrateSettingsAsync(int topCount)
         //{
-        //    return await _context.UserStats
+        //    return await DbSet
         //        .OrderByDescending(s=> s.GamesPlayed / s.Wins)
         //        .Take(topCount).ToListAsync();
         //}
@@ -102,7 +77,7 @@ namespace SC_Backend.Repositories
         {
             await CheckFK(null, gameSettingId);
 
-            return await _context.UserStats
+            return await DbSet
                 .AsNoTracking()
                 .Where(s => s.GameSettingId == gameSettingId && s.IsRanked == isRanked)
                 .OrderByDescending(s => s.GamesPlayed == 0 ? 0 : (double)s.Wins / s.GamesPlayed)
@@ -132,14 +107,14 @@ namespace SC_Backend.Repositories
         {
             if (userID.HasValue)
             {
-                var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UsersId == userID.Value);
+                var user = await Context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UsersId == userID.Value);
                 if (user == null)
                     throw new KeyNotFoundException($"{nameof(User)} does not exist with ID {userID}");
             }
 
             if (gameSettingID.HasValue)
             {
-                var setting = await _context.GameSettings.AsNoTracking().FirstOrDefaultAsync(s => s.GameSettingsId == gameSettingID.Value);
+                var setting = await Context.GameSettings.AsNoTracking().FirstOrDefaultAsync(s => s.GameSettingsId == gameSettingID.Value);
                 if (setting == null)
                     throw new KeyNotFoundException($"{nameof(GameSetting)} does not exist with ID {gameSettingID}");
             }

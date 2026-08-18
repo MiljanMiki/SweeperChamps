@@ -6,60 +6,25 @@ using System.Threading.Tasks;
 
 namespace SC_Backend.Repositories
 {
-    public class GamePlayerRepository : IGamePlayerRepository
+    public class GamePlayerRepository : BaseAsyncRepository<GamePlayer>, IGamePlayerRepository
     {
-        private readonly ApplicationDbContext _context;
+        public GamePlayerRepository(ApplicationDbContext context) : base(context) {}
 
-        public GamePlayerRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        #region AsyncImpl
-        public async Task<GamePlayer?> GetAsync(int id)
-        {
-            return await _context.GamePlayers.FindAsync(id);
-        }
-
-        public async Task<IEnumerable<GamePlayer>> GetAllAsync()
-        {
-            return await _context.GamePlayers.AsNoTracking().ToListAsync();
-        }
-        public void Add(GamePlayer entity)
+        public override void Add(GamePlayer entity)
         {
             ArgumentNullException.ThrowIfNull(entity);
 
-            var user = _context.Users.Find(entity.PlayerId);
+            var user = Context.Users.Find(entity.PlayerId);
             if (user == null)
                 throw new KeyNotFoundException($"FK {entity.PlayerId} of {nameof(User)} does not map to any row.");
 
-            var game = _context.Games.Find(entity.GameId);
+            var game = Context.Games.Find(entity.GameId);
             if (game == null)
                 throw new KeyNotFoundException($"FK {entity.GameId} of {nameof(Game)} does not map to any row.");
-            _context.GamePlayers.Add(entity);
+            DbSet.Add(entity);
 
         }
-
-        public void Update( GamePlayer entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-            _context.GamePlayers.Update(entity);
-        }
-        public void Delete(GamePlayer entity)
-        {
-            ArgumentNullException.ThrowIfNull(entity);
-            _context.GamePlayers.Remove(entity);
-        }
-
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
-        #endregion AsyncImpl
-
-
-
-        public async Task<IEnumerable<Game>> GamesBetweenPlayersAsync(int[] playerIDs)
+         public async Task<IEnumerable<Game>> GamesBetweenPlayersAsync(int[] playerIDs)
         {
             ArgumentNullException.ThrowIfNull(playerIDs);
 
@@ -70,13 +35,13 @@ namespace SC_Backend.Repositories
             int requiredPlayerCount = distinctPlayerIds.Length;
 
             //Find all GameIds where ALL provided players participated
-            var sharedGameIds = _context.GamePlayers
+            var sharedGameIds = DbSet
                 .Where(gp => distinctPlayerIds.Contains(gp.PlayerId))
                 .GroupBy(gp => gp.GameId)
                 .Where(group => group.Select(gp => gp.PlayerId).Distinct().Count() == requiredPlayerCount)
                 .Select(group => group.Key);
 
-            return await _context.Games
+            return await Context.Games
                 .AsNoTracking()
                 .Where(g => sharedGameIds.Contains(g.GamesId))
                 .Include(g => g.GameSettings)
@@ -87,7 +52,7 @@ namespace SC_Backend.Repositories
 
         public async Task<IEnumerable<Game>> GetGamesFromPlayerAsync(int playerID, bool orderByScore = false)
         {
-            var query = _context.GamePlayers
+            var query = DbSet
                         .AsNoTracking()
                         .Include(player => player.Game)
                         .Where(player => player.PlayerId == playerID);
@@ -100,11 +65,11 @@ namespace SC_Backend.Repositories
 
         public async Task<IEnumerable<GamePlayer>> GetAllPlayersFromGameAsync(int gameId)
         {
-            var game = await _context.Games.FindAsync(gameId);
+            var game = await Context.Games.FindAsync(gameId);
             if (game == null)
                 throw new KeyNotFoundException($"FK {gameId} of {nameof(Game)} does not map to any row.");
 
-            var listaIgraca = await _context.GamePlayers
+            var listaIgraca = await DbSet
                 .AsNoTracking()
                 .Include(player => player.Player)//moze da ide i dublje, do userstats pa tu da se izvlaci sta ocemo
                 .Where(player => player.GameId == gameId)
@@ -115,12 +80,12 @@ namespace SC_Backend.Repositories
 
         public async Task<GamePlayer?> GetLoadedGamePlayerAsync(int id)
         {
-            return await _context.GamePlayers.AsNoTracking().Include(g => g.Game).Include(g => g.Player).FirstOrDefaultAsync(g => g.GamePlayersId == id);
+            return await DbSet.AsNoTracking().Include(g => g.Game).Include(g => g.Player).FirstOrDefaultAsync(g => g.GamePlayersId == id);
         }
 
         public async Task<IEnumerable<Game>> GetGamesFromPlayerWithSettingAsync(int playerID, int settingID)
         {
-            return await _context.GamePlayers
+            return await DbSet
                 .AsNoTracking()
                 .Where(g=>g.PlayerId == playerID && g.Game.GameSettingsId == settingID)
                 .Select(g=>g.Game)
