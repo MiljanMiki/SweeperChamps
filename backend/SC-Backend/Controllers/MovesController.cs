@@ -7,9 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
-using SC_Backend.Repositories;
 using SC_Backend.DTOs.Moves;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using SC_Backend.Repositories.AsyncInterfaces;
 
 namespace SC_Backend.Controllers
 {
@@ -24,7 +24,7 @@ namespace SC_Backend.Controllers
         }
 
         // GET: api/Moves
-        [HttpGet]
+        [HttpGet("all")]
         public async Task<ActionResult<IEnumerable<MoveDTO>>> GetMovesAsync()
         {
             var moves = await _movesRepository.GetAllAsync();
@@ -106,9 +106,13 @@ namespace SC_Backend.Controllers
 
                 return CreatedAtAction("GetMove", new { id = move.MovesId }, move);
             }
-            catch(Exception e)
+            catch(ArgumentNullException e)
             {
                 return BadRequest(e.Message);
+            }
+            catch(KeyNotFoundException e)
+            {
+                return NotFound(e.Message);
             }
             
         }

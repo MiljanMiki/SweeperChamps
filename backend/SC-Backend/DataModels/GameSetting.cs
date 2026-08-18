@@ -35,7 +35,7 @@ public partial class GameSetting
     public bool HasPowerUps { get; set; } // true (Custom), false (Classic)
 
     [InverseProperty("GameSettings")]
-    public virtual Game Game{ get; set; } = null!;
+    public virtual ICollection<Game> Game{ get; set; } = null!;
 }
 
 public enum WinConditions

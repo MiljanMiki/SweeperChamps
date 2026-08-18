@@ -5,7 +5,7 @@ using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
 using SC_Backend.DTOs.Games;
-using SC_Backend.Repositories;
+using SC_Backend.Repositories.AsyncInterfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,7 @@ namespace SC_Backend.Controllers
 
         #region CRUD
         // GET: api/Games
-        [HttpGet]
+        [HttpGet("all")]
         public async Task<ActionResult<IEnumerable<GameDto>>> GetGamesAsync()
         {
             var listGames = await _gameRepository.GetAllAsync();

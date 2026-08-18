@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
-using SC_Backend.Repositories;
+using SC_Backend.Repositories.AsyncInterfaces;
 
 namespace SC_Backend.Controllers
 {
@@ -27,7 +27,7 @@ namespace SC_Backend.Controllers
         #region CRUD
         // GET: api/GamePlayers
         //PROMENI U DTO
-        [HttpGet]
+        [HttpGet("all")]
         public async Task<ActionResult<IEnumerable<GamePlayerDto>>> GetGamePlayersAsync()
         {
             var list = await _gamePlayerRepository.GetAllAsync();
@@ -186,23 +186,30 @@ namespace SC_Backend.Controllers
                 return BadRequest("ID cannot be negative or 0.");
 
 
-            var listaIgraca = (await _gamePlayerRepository.GetAllPlayersFromGameAsync(gameId)).ToList();
-
-            if (listaIgraca.Count == 0)
-                return BadRequest("Returned 0 players.");
-
-            if (listaIgraca.Count % 2 != 0)
-                return BadRequest("Number of players in a game must be even.");
-
-
-            return listaIgraca.Select(player => new PlayerSummaryDto
+            try
             {
-                PlayerId = player.PlayerId,
-                Username = player.Player.Username,
-                TeamColor = player.TeamColor.ToString(),
-                Score = player.Score,
-                Elo = player.Player.Elo,
-            }).ToList();
+                var listaIgraca = (await _gamePlayerRepository.GetAllPlayersFromGameAsync(gameId)).ToList();
+
+                if (listaIgraca.Count == 0)
+                    return BadRequest("Returned 0 players.");
+
+                if (listaIgraca.Count % 2 != 0)
+                    return BadRequest("Number of players in a game must be even.");
+
+
+                return Ok(listaIgraca.Select(player => new PlayerSummaryDto
+                {
+                    PlayerId = player.PlayerId,
+                    Username = player.Player.Username,
+                    TeamColor = player.TeamColor.ToString(),
+                    Score = player.Score,
+                    Elo = player.Player.Elo,
+                }).ToList());
+            }
+            catch(KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
         [HttpGet("player/{playerId}")]

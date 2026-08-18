@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
+using SC_Backend.Repositories.AsyncInterfaces;
 
-namespace SC_Backend.Repositories
+namespace SC_Backend.Repositories.AsyncImplementations
 {
     public class UserRepository :BaseAsyncRepository<User>, IUserRepository
     {

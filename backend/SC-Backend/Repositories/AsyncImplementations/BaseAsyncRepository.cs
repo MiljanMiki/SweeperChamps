@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
+using SC_Backend.Repositories.AsyncInterfaces;
 
-namespace SC_Backend.Repositories
+namespace SC_Backend.Repositories.AsyncImplementations
 {
     public abstract class BaseAsyncRepository<T> : IAsyncRepository<T> where T:class
     {

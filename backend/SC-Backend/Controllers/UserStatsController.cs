@@ -7,7 +7,7 @@ using SC_Backend.DataModels;
 using SC_Backend.DTOs.GameSettings;
 using SC_Backend.DTOs.Users;
 using SC_Backend.DTOs.UserStats;
-using SC_Backend.Repositories;
+using SC_Backend.Repositories.AsyncInterfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,7 +59,7 @@ namespace SC_Backend.Controllers
 
         // PUT: api/UserStats/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("put")]
+        [HttpPut]
         public async Task<IActionResult> PutUserStatsAsync(FullStatDTO dto)
         {
             var retMessage = CheckFullDTO(dto);
@@ -139,9 +139,13 @@ namespace SC_Backend.Controllers
                     throw;
                 }
             }
-            catch (Exception e)
+            catch (ArgumentNullException e)
             {
                 return BadRequest(e.Message);
+            }
+            catch(KeyNotFoundException e)
+            {
+                return NotFound(e.Message);
             }
 
         }
@@ -180,14 +184,14 @@ namespace SC_Backend.Controllers
 
                 return Ok(MakeLoadedStat(stat, true, true));
             }
-            catch (Exception e)
+            catch (KeyNotFoundException e)
             {
-                return BadRequest(e.Message);
+                return NotFound(e.Message);
             }
         }
 
         //Can be for a specific gamemode/setting 
-        [HttpGet("user-allstats")]
+        [HttpGet("allstats")]
         public async Task<ActionResult<IEnumerable<FullStatDTO>>> GetAllUserStatsAsync(int userID, int? gameSettingID, bool isRanked, bool loadNav)
         {
             if (userID <= 0 || gameSettingID <= 0)
@@ -198,9 +202,9 @@ namespace SC_Backend.Controllers
 
                 return Ok(stats.Select(s => MakeLoadedStat(s, loadNav, gameSettingID.HasValue && loadNav)).ToList()); 
             }
-            catch (Exception e)
+            catch (KeyNotFoundException e)
             {
-                return BadRequest(e.Message);
+                return NotFound(e.Message);
             }
         }
 
@@ -223,9 +227,9 @@ namespace SC_Backend.Controllers
                     WinRatePercentage = s.GamesPlayed == 0 ? 0 : ((double)s.Wins / s.GamesPlayed) * 100
                 }).ToList());
             }
-            catch (Exception e)
+            catch (KeyNotFoundException e)
             {
-                return BadRequest(e.Message);
+                return NotFound(e.Message);
             }
         }
 
@@ -244,9 +248,13 @@ namespace SC_Backend.Controllers
                 await _userStatsRepository.RecordMatchResultAsync(userId, gameSettingId, isRanked, isWin, matchDuration);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
+            }
+            catch (KeyNotFoundException e)
+            {
+                return NotFound(e.Message);
             }
         }
         private static UserStatDTO MapToDto(UserStats stats)
@@ -320,7 +328,14 @@ namespace SC_Backend.Controllers
         }
         private async Task<bool> UserStatsExists(int playerID, int gameSettingID, bool isRanked)
         {
-            return await _userStatsRepository.GetStatAsync(playerID,gameSettingID,isRanked) != null;
+            try
+            {
+                return await _userStatsRepository.GetStatAsync(playerID, gameSettingID, isRanked) != null;
+            }
+            catch(KeyNotFoundException e)
+            {
+                throw;
+            }
         }
     }
 }

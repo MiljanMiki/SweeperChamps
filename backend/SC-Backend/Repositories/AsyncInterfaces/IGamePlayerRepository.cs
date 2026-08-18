@@ -1,7 +1,7 @@
 ﻿using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
 
-namespace SC_Backend.Repositories
+namespace SC_Backend.Repositories.AsyncInterfaces
 {
     public interface IGamePlayerRepository : IAsyncRepository<GamePlayer>
     {

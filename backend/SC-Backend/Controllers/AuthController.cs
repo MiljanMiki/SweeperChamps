@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs;
-using SC_Backend.Repositories;
+using SC_Backend.Repositories.AsyncInterfaces;
 using SC_Backend.Services;
 
 namespace SC_Backend.Controllers;
@@ -26,51 +26,59 @@ namespace SC_Backend.Controllers;
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Provera da li username postoji
-            if (await _userRepository.GetUserByUsernameAsync(registerDto.Username) != null)
-                return BadRequest(new { message = "Username već postoji" });
-
-            // Provera da li email postoji
-            if (await _userRepository.GetUserByEmailAsync(registerDto.Email) != null)
-                return BadRequest(new { message = "Email već postoji" });
-
-            // Kreiranje korisnika
-            var user = new User
+        // Provera da li username postoji
+            try
             {
-                Username = registerDto.Username,
-                Email = registerDto.Email,
-                PasswordHash = _authService.HashPassword(registerDto.Password),
-                UserRole = UserRoles.User,
-                Datecreated = DateOnly.FromDateTime(DateTime.Now),
-            };
+                if (await _userRepository.GetUserByUsernameAsync(registerDto.Username) != null)
+                    return BadRequest(new { message = "Username već postoji" });
 
-            // Prvi korisnik postaje admin
-            if (!await _userRepository.AnyUserExists())
-            {
-                user.UserRole = UserRoles.Admin;
-            }
+                // Provera da li email postoji
+                if (await _userRepository.GetUserByEmailAsync(registerDto.Email) != null)
+                    return BadRequest(new { message = "Email već postoji" });
 
-            _userRepository.Add(user);
-            await _userRepository.SaveChangesAsync();
-
-            // Generisanje tokena
-            var token = _authService.GenerateJwtToken(user);
-
-            var response = new LoginResponseDto
-            {
-                Token = token,
-                Expires = DateTime.UtcNow.AddHours(24),
-                User = new UserInfoDto
+                // Kreiranje korisnika
+                var user = new User
                 {
-                    Id = user.UsersId,
-                    Username = user.Username,
-                    Email = user.Email,
-                    Elo = user.Elo ?? 0,
-                    CreatedAt = user.Datecreated
-                }
-            };
+                    Username = registerDto.Username,
+                    Email = registerDto.Email,
+                    PasswordHash = _authService.HashPassword(registerDto.Password),
+                    UserRole = UserRoles.User,
+                    Datecreated = DateOnly.FromDateTime(DateTime.Now),
+                };
 
-            return Ok(response);
+                // Prvi korisnik postaje admin
+                if (!await _userRepository.AnyUserExists())
+                {
+                    user.UserRole = UserRoles.Admin;
+                }
+
+                _userRepository.Add(user);
+                await _userRepository.SaveChangesAsync();
+
+                // Generisanje tokena
+                var token = _authService.GenerateJwtToken(user);
+
+                var response = new LoginResponseDto
+                {
+                    Token = token,
+                    Expires = DateTime.UtcNow.AddHours(24),
+                    User = new UserInfoDto
+                    {
+                        Id = user.UsersId,
+                        Username = user.Username,
+                        Email = user.Email,
+                        Elo = user.Elo ?? 0,
+                        CreatedAt = user.Datecreated
+                    }
+                };
+
+                return Ok(response);
+            }
+            catch (ArgumentNullException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        
         }
 
         [HttpPost("login")]

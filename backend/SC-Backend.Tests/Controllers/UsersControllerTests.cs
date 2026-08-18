@@ -4,7 +4,7 @@ using NUnit.Framework;
 using SC_Backend.Controllers;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.Users;
-using SC_Backend.Repositories;
+using SC_Backend.Repositories.AsyncInterfaces;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;

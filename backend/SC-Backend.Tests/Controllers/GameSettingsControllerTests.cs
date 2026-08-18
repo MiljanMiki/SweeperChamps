@@ -5,7 +5,7 @@ using SC_Backend.Controllers;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GameSettings;
-using SC_Backend.Repositories;
+using SC_Backend.Repositories.AsyncImplementations;
 using System;
 using System.Collections.Generic;
 using System.Linq;

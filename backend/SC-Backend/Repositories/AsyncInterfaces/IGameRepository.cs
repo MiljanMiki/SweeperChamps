@@ -2,7 +2,7 @@
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.Games;
 
-namespace SC_Backend.Repositories
+namespace SC_Backend.Repositories.AsyncInterfaces
 {
     public interface IGameRepository : IAsyncRepository<Game>
     {

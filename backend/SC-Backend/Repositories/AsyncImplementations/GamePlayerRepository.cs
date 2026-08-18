@@ -2,9 +2,10 @@
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
+using SC_Backend.Repositories.AsyncInterfaces;
 using System.Threading.Tasks;
 
-namespace SC_Backend.Repositories
+namespace SC_Backend.Repositories.AsyncImplementations
 {
     public class GamePlayerRepository : BaseAsyncRepository<GamePlayer>, IGamePlayerRepository
     {

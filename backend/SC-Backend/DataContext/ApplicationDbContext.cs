@@ -47,6 +47,10 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.GamesId).HasName("games_pkey");
 
+            //entity.HasOne(g => g.GameSettings)
+            //      .WithMany(gs => gs.Game)
+            //      .HasConstraintName("game_gameSettingsId_fk");
+
             entity.Property(e => e.Status).HasConversion<string>();
         });
 

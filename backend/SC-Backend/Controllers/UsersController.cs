@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.Users;
-using SC_Backend.Repositories;
+using SC_Backend.Repositories.AsyncInterfaces;
 
 namespace SC_Backend.Controllers
 {
@@ -26,7 +26,7 @@ namespace SC_Backend.Controllers
         }
 
         // GET: api/Users
-        [HttpGet]
+        [HttpGet("all")]
         public async Task<ActionResult<IEnumerable<UserDTO>>> GetUsersAsync()
         {
             var list = await _userRepository.GetAllAsync();
@@ -74,12 +74,14 @@ namespace SC_Backend.Controllers
             if (user.Elo != null && dto.Elo == null)
                 return BadRequest($"User already has a set elo. It can only be reset to 0 now.");
 
-            if(user.Username != dto.Username || user.Email != dto.Email)
-                if (!(await _userRepository.IsUniqueUsernameOrEmailAsync(dto.Username,dto.Email)))
-                    return BadRequest($"Username or email is already taken.");
+            
             
             try
             {
+                if (user.Username != dto.Username || user.Email != dto.Email)
+                    if (!(await _userRepository.IsUniqueUsernameOrEmailAsync(dto.Username, dto.Email)))
+                        return BadRequest($"Username or email is already taken.");
+
                 user.Username = dto.Username;
                 user.Email = dto.Email;
                 user.UserRole = dto.UserRole;
@@ -96,6 +98,10 @@ namespace SC_Backend.Controllers
                 {
                     throw;
                 }
+            }
+            catch(ArgumentNullException e)
+            {
+                return BadRequest(e.Message);
             }
 
             return NoContent();
@@ -228,9 +234,16 @@ namespace SC_Backend.Controllers
             if(dto.Role.HasValue && !Enum.IsDefined(typeof(UserRoles),dto.Role))
                 return BadRequest($"{dto.Role} value is not defined for enum ${nameof(UserRoles)}");
 
-            var list = await _userRepository.FilterUsersAsync(dto.DateCreated, dto.DateBefore, dto.Elo, dto.EloBigger, dto.Role);
+            try
+            {
+                var list = await _userRepository.FilterUsersAsync(dto.DateCreated, dto.DateBefore, dto.Elo, dto.EloBigger, dto.Role);
 
-            return Ok(list.Select(MapToDto));
+                return Ok(list.Select(MapToDto));
+            }
+            catch(ArgumentNullException e)
+            {
+                return BadRequest(e.Message);
+            }
         }
 
         private static UserDTO MapToDto(User user)

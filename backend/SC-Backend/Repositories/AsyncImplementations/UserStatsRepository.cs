@@ -2,10 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
+using SC_Backend.Repositories.AsyncInterfaces;
 using System.Configuration;
 using System.Threading.Tasks;
 
-namespace SC_Backend.Repositories
+namespace SC_Backend.Repositories.AsyncImplementations
 {
     public class UserStatsRepository :BaseAsyncRepository<UserStats>, IUserStatsRepository
     {

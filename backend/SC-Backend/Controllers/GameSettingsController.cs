@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GameSettings;
-using SC_Backend.Repositories;
+using SC_Backend.Repositories.AsyncInterfaces;
 
 namespace SC_Backend.Controllers
 {
@@ -109,17 +109,23 @@ namespace SC_Backend.Controllers
                 WinCondition = dto.WinCondition,
                 HasPowerUps = dto.HasPowerUps
             };
-            
-            
-            var setting = await _gameSettingRepository.GetOrCreateSettingAsync(gs);
 
-            if (setting != null)
+            try
             {
-                return Ok(MapToDto(setting));
+                var setting = await _gameSettingRepository.GetOrCreateSettingAsync(gs);
+
+                if (setting != null)
+                {
+                    return Ok(MapToDto(setting));
+                }
+                else
+                {
+                    return CreatedAtAction(nameof(GetGameSettingAsync), new { id = gs.GameSettingsId }, MapToDto(gs));
+                }
             }
-            else
+            catch(ArgumentNullException ex)
             {
-                return CreatedAtAction(nameof(GetGameSettingAsync), new { id = gs.GameSettingsId }, MapToDto(gs));
+                return BadRequest(ex.Message);
             }
         }
 

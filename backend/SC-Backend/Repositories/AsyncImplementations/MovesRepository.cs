@@ -1,9 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
+using SC_Backend.Repositories.AsyncInterfaces;
 using System.Threading.Tasks;
 
-namespace SC_Backend.Repositories
+namespace SC_Backend.Repositories.AsyncImplementations
 {
     public class MovesRepository :BaseAsyncRepository<Move>, IMovesRepository
     {
@@ -32,6 +33,11 @@ namespace SC_Backend.Repositories
         public async Task<bool> HasMovesForGameAsync(int gameId)
         {
             return await DbSet.AnyAsync(m => m.GameId == gameId);
+        }
+
+        public async Task<Move?> GetLoadedGameAsync(int gameId)
+        {
+            return await DbSet.Include(m => m.Game).FirstOrDefaultAsync(m => m.GameId == gameId);
         }
     }
 }
