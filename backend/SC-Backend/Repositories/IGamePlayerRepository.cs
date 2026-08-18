@@ -5,9 +5,10 @@ namespace SC_Backend.Repositories
 {
     public interface IGamePlayerRepository : IAsyncRepository<GamePlayer>
     {
-
         Task<IEnumerable<GamePlayer>> GetAllPlayersFromGameAsync(int gameId);
-        Task<IEnumerable<Game>> GetAllGamesFromPlayerAsync(int playerID, bool orderByScore = false);
+        Task<IEnumerable<Game>> GetGamesFromPlayerAsync(int playerID, bool orderByScore = false);
         Task<IEnumerable<Game>> GamesBetweenPlayersAsync(int[] playerIDs);
+        Task<GamePlayer?> GetLoadedGamePlayerAsync(int id);
+        Task<IEnumerable<Game>> GetGamesFromPlayerWithSettingAsync(int playerID, int settingID);
     }
 }

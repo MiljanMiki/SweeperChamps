@@ -50,6 +50,13 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasConversion<string>();
         });
 
+        modelBuilder.Entity<Game>(entity =>
+            entity.ToTable("games", tb =>
+            {
+                tb.HasCheckConstraint("CK_valid_end_time", "end_time IS NULL OR (end_time > start_time)");
+            })
+        );
+
         modelBuilder.Entity<GamePlayer>(entity =>
         {
             entity.HasKey(e => e.GamePlayersId).HasName("game_players_pkey");
@@ -129,7 +136,7 @@ public partial class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
             entity.ToTable("users",tb=>
             {
-                tb.HasCheckConstraint("CK_users_email", "email LIKE '%@%.%'");
+                tb.HasCheckConstraint("CK_users_email", "email LIKE '%@%'");
                 //tb.HasCheckConstraint("CK_users_datecreated", "datecreated");
                 tb.HasCheckConstraint("CK_users_elo", "elo >=0 AND elo <=  32767"); //32767 je max za smallint
                 tb.HasCheckConstraint("CK_users_user_role", "user_role IN ('NotSet','User','Admin')");

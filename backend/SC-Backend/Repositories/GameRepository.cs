@@ -93,5 +93,15 @@ namespace SC_Backend.Repositories
 
             return await query.ToListAsync();
         }
+
+        public async Task<Game?> GetLoadedGame(int id)
+        {
+            return await _context.Games.AsNoTracking().Include(g => g.GameSettings).FirstOrDefaultAsync(g => g.GamesId == id);
+        }
+
+        public async Task<IEnumerable<Game>> GetAllGamesWithSetting(int settingID)
+        {
+            return await _context.Games.AsNoTracking().Where(g => g.GameSettingsId == settingID).ToListAsync();
+        }
     }
 }

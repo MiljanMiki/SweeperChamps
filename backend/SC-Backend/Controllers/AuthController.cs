@@ -1,22 +1,22 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs;
-using SC_Backend.DataContext;
+using SC_Backend.Repositories;
 using SC_Backend.Services;
-
-using Microsoft.EntityFrameworkCore;
 
 namespace SC_Backend.Controllers;
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IUserRepository _userRepository;
         private readonly IAuthService _authService;
 
-        public AuthController(ApplicationDbContext context, IAuthService authService)
+        public AuthController(IUserRepository repo, IAuthService authService)
         {
-            _context = context;
+            _userRepository = repo;
             _authService = authService;
         }
 
@@ -27,11 +27,11 @@ namespace SC_Backend.Controllers;
                 return BadRequest(ModelState);
 
             // Provera da li username postoji
-            if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
+            if (await _userRepository.GetUserByUsernameAsync(registerDto.Username) != null)
                 return BadRequest(new { message = "Username već postoji" });
 
             // Provera da li email postoji
-            if (await _context.Users.AnyAsync(u => u.Email == registerDto.Email))
+            if (await _userRepository.GetUserByEmailAsync(registerDto.Email) != null)
                 return BadRequest(new { message = "Email već postoji" });
 
             // Kreiranje korisnika
@@ -45,13 +45,13 @@ namespace SC_Backend.Controllers;
             };
 
             // Prvi korisnik postaje admin
-            if (!await _context.Users.AnyAsync())
+            if (!await _userRepository.AnyUserExists())
             {
                 user.UserRole = UserRoles.Admin;
             }
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            _userRepository.Add(user);
+            await _userRepository.SaveChangesAsync();
 
             // Generisanje tokena
             var token = _authService.GenerateJwtToken(user);
@@ -79,12 +79,11 @@ namespace SC_Backend.Controllers;
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Pronalaženje korisnika po username ili email
-            var korisnik = await _context.Users
-                .FirstOrDefaultAsync(u => u.Username == loginDto.Username || u.Email == loginDto.Username);
+            // Pronalaženje korisnika po username
+            var korisnik = await _userRepository.GetUserByUsernameAsync(loginDto.Username);
 
             if (korisnik == null)
-                return Unauthorized(new { message = "Pogrešno korisničko ime ili lozinka" });
+                return NotFound($"User with username {loginDto.Username} does not exist.");
 
             if (!_authService.VerifyPassword(loginDto.Password, korisnik.PasswordHash))
                 return Unauthorized(new { message = "Pogrešno korisničko ime ili lozinka" });

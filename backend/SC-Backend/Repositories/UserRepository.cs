@@ -76,18 +76,18 @@ namespace SC_Backend.Repositories
             return await query.ToListAsync();
         }
 
-        public async Task ClearNotSetRoles()
+        public async Task ClearNotSetRolesAsync()
         {
             await _context.Users.Where(user => user.UserRole == UserRoles.NotSet).ExecuteDeleteAsync();
         }
 
-        public async Task<User?> GetUserByUsername(string username)
+        public async Task<User?> GetUserByUsernameAsync(string username)
         {
             ArgumentNullException.ThrowIfNull(username);
             return await _context.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Username == username);
         }
 
-        public async Task<User?> GetUserByEmail(string email)
+        public async Task<User?> GetUserByEmailAsync(string email)
         {
             ArgumentNullException.ThrowIfNull(email);
             return await _context.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Email == email);
@@ -98,7 +98,7 @@ namespace SC_Backend.Repositories
             return await _context.Users.AsNoTracking().Where(u=>u.Elo != null).OrderByDescending(user=> user.Elo).Take(topCount).ToListAsync();
         }
 
-        public async Task<User?> GetUserWithLoadedProperties(int id, bool history, bool stats)
+        public async Task<User?> GetUserWithLoadedPropertiesAsync(int id, bool history, bool stats)
         {
             var query = _context.Users.AsNoTracking();
             
@@ -108,6 +108,11 @@ namespace SC_Backend.Repositories
                 query = query.Include(u => u.UserStats);
 
             return await query.FirstOrDefaultAsync(u => u.UsersId == id);
+        }
+
+        public async Task<bool> AnyUserExists()
+        {
+            return await _context.Users.AnyAsync();
         }
     }
 }

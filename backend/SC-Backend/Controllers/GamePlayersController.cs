@@ -215,7 +215,7 @@ namespace SC_Backend.Controllers
             if (player == null)
                 return BadRequest($"Player with ID {playerId} doesnt exist.");
 
-            var listaIgra = await _gamePlayerRepository.GetAllGamesFromPlayerAsync(playerId, orderByScore);
+            var listaIgra = await _gamePlayerRepository.GetGamesFromPlayerAsync(playerId, orderByScore);
 
             return listaIgra.Select(game => new GameSummaryDto
             {

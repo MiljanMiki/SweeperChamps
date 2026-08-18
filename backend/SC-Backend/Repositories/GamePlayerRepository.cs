@@ -85,7 +85,7 @@ namespace SC_Backend.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Game>> GetAllGamesFromPlayerAsync(int playerID, bool orderByScore = false)
+        public async Task<IEnumerable<Game>> GetGamesFromPlayerAsync(int playerID, bool orderByScore = false)
         {
             var query = _context.GamePlayers
                         .AsNoTracking()
@@ -111,6 +111,20 @@ namespace SC_Backend.Repositories
                 .ToListAsync();
 
             return listaIgraca;
+        }
+
+        public async Task<GamePlayer?> GetLoadedGamePlayerAsync(int id)
+        {
+            return await _context.GamePlayers.AsNoTracking().Include(g => g.Game).Include(g => g.Player).FirstOrDefaultAsync(g => g.GamePlayersId == id);
+        }
+
+        public async Task<IEnumerable<Game>> GetGamesFromPlayerWithSettingAsync(int playerID, int settingID)
+        {
+            return await _context.GamePlayers
+                .AsNoTracking()
+                .Where(g=>g.PlayerId == playerID && g.Game.GameSettingsId == settingID)
+                .Select(g=>g.Game)
+                .ToListAsync();
         }
     }
 }

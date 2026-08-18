@@ -168,7 +168,7 @@ namespace SC_Backend.Controllers
         {
             if(id<=0)
                 return BadRequest("ID cannot be negative or 0.");
-            var user = await _userRepository.GetUserWithLoadedProperties(id, history, stats);
+            var user = await _userRepository.GetUserWithLoadedPropertiesAsync(id, history, stats);
 
             if (user == null)
                 return NotFound($"{nameof(User)} with ID {id} was not found.");

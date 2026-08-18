@@ -115,7 +115,7 @@ namespace SC_Backend.Tests.Repositories
         [Test]
         public async Task GetUserByUsername_WithValidUsername_ReturnsUser()
         {
-            var user = await _repository.GetUserByUsername("BetaAdmin");
+            var user = await _repository.GetUserByUsernameAsync("BetaAdmin");
 
             Assert.That(user, Is.Not.Null);
             Assert.That(user!.Email, Is.EqualTo("admin@test.com"));
@@ -124,7 +124,7 @@ namespace SC_Backend.Tests.Repositories
         [Test]
         public async Task GetUserByEmail_WithValidEmail_ReturnsUser()
         {
-            var user = await _repository.GetUserByEmail("alpha@test.com");
+            var user = await _repository.GetUserByEmailAsync("alpha@test.com");
 
             Assert.That(user, Is.Not.Null);
             Assert.That(user!.Username, Is.EqualTo("AlphaUser"));
@@ -143,7 +143,7 @@ namespace SC_Backend.Tests.Repositories
         [Test]
         public async Task GetUserWithLoadedProperties_IncludesRequestedNavigations()
         {
-            var user = await _repository.GetUserWithLoadedProperties(1, history: true, stats: true);
+            var user = await _repository.GetUserWithLoadedPropertiesAsync(1, history: true, stats: true);
 
             Assert.That(user, Is.Not.Null);
             Assert.That(user!.GamePlayers, Is.Not.Null);
