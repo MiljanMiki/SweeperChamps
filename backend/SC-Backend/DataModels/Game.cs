@@ -22,6 +22,15 @@ public partial class Game
     [Column("status", TypeName = "character varying")]
     public GameStatuses Status { get; set; }
 
+    [Column("is_ranked")]
+    public bool IsRanked { get; set; }
+
+    [Column("duration_seconds")]
+    public int? DurationSeconds { get; set; }
+
+    [Column("winning_team")]
+    public TeamColors? WinningTeam { get; set; }
+
     [InverseProperty("Game")]
     public virtual ICollection<GamePlayer> GamePlayers { get; set; } = new List<GamePlayer>();
 

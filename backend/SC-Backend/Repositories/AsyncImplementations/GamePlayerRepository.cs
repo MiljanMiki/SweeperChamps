@@ -92,5 +92,28 @@ namespace SC_Backend.Repositories.AsyncImplementations
                 .Select(g=>g.Game)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<GamePlayer>> GetUserMatchHistoryAsync(int userId, int page, int pageSize)
+        {
+            return await DbSet
+                        .AsNoTracking()
+                        .Include(gp => gp.Game)
+                        .Where(gp => gp.PlayerId == userId && gp.Game.EndTime != null) // Only finished games
+                        .OrderByDescending(gp => gp.Game.EndTime)
+                        .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToListAsync();
+        }
+        public async Task UpdatePlayerResultsAsync(IEnumerable<GamePlayer> finalPlayerStats)
+        {
+            DbSet.UpdateRange(finalPlayerStats);
+            await SaveChangesAsync();
+        }
+        public async Task<int> GetTotalScoreForUserAsync(int userId)
+        {
+            return await DbSet
+                        .Where(gp => gp.PlayerId == userId)
+                        .SumAsync(gp => gp.Score);
+        }
     }
 }

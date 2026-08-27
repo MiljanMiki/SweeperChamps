@@ -73,5 +73,44 @@ namespace SC_Backend.Repositories.AsyncImplementations
         {
             return await DbSet.AsNoTracking().Where(g => g.GameSettingsId == settingID).ToListAsync();
         }
+
+        public async Task<IEnumerable<Game>> GetLiveGamesAsync(int limit)
+        {
+            return await DbSet
+                .AsNoTracking()
+                .Where(g => g.EndTime == null)
+                .OrderByDescending(g => g.StartTime)
+                .Take(limit)
+                .ToListAsync();
+        }
+
+        public async Task MarkGameAsFinishedAsync(int gameId, int durationSeconds, TeamColors winningTeam)
+        {
+            await DbSet
+                    .Where(g => g.GamesId == gameId)
+                    .ExecuteUpdateAsync(s => s
+                    .SetProperty(g => g.EndTime, DateTime.UtcNow)
+                    .SetProperty(g => g.DurationSeconds, durationSeconds)
+                    .SetProperty(g => g.WinningTeam, winningTeam));
+        }
+
+        public async Task<IEnumerable<Game>> GetGamesWithPlayer(int playerID, int limit, bool ranked = false)
+        {
+            var games = await DbSet
+                    .AsNoTracking()
+                    .Where(g => g.GamePlayers.Any(gp => gp.PlayerId == playerID) && g.IsRanked == ranked)
+                    .OrderByDescending(g => g.StartTime)
+                    .Take(limit)
+                    .ToListAsync();
+
+            // Only query Users table if zero games were returned, saving a DB round-trip on valid requests
+            if (games.Count == 0 && !await Context.Users.AnyAsync(u => u.UsersId == playerID))
+            {
+                throw new KeyNotFoundException($"{nameof(User)} with ID {playerID} does not exist.");
+            }
+
+            return games;
+
+        }
     }
 }

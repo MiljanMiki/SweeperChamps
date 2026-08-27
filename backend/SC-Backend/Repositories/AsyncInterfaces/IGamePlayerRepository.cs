@@ -10,5 +10,8 @@ namespace SC_Backend.Repositories.AsyncInterfaces
         Task<IEnumerable<Game>> GamesBetweenPlayersAsync(int[] playerIDs);
         Task<GamePlayer?> GetLoadedGamePlayerAsync(int id);
         Task<IEnumerable<Game>> GetGamesFromPlayerWithSettingAsync(int playerID, int settingID);
+        Task<IEnumerable<GamePlayer>> GetUserMatchHistoryAsync(int userId, int page, int pageSize);
+        Task UpdatePlayerResultsAsync(IEnumerable<GamePlayer> finalPlayerStats);
+        Task<int> GetTotalScoreForUserAsync(int userId);
     }
 }

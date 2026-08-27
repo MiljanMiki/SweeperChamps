@@ -13,6 +13,13 @@ namespace SC_Backend.DTOs.Games
         public DateTime? EndTime { get; set; }
 
         public GameStatuses Status { get; set; }
+
+        public bool IsRanked { get; set; }
+
+        public int? DurationSeconds { get; set; }
+
+        public TeamColors? WinningTeam { get; set; }
+
         public int GameSettingsId { get; set; }
     }
 

@@ -25,6 +25,16 @@ public partial class GamePlayer
     [Column("score")]
     public int Score { get; set; }
 
+    [Column("outcome")]
+    public Outcomes Outcome { get; set; }
+
+    [Column("elo_change")]
+    public short? EloChange { get; set; }
+
+    [Column("accuracy")]
+    public double Accuracy { get; set; }
+
+
     [ForeignKey("GameId")]
     [InverseProperty("GamePlayers")]
     public virtual Game Game { get; set; } = null!;
@@ -38,4 +48,12 @@ public enum TeamColors
 { 
     Red,
     Blue
+}
+public enum Outcomes
+{
+    Win,
+    Loss,
+    Draw,
+    Abandoned,
+    Disconnected
 }

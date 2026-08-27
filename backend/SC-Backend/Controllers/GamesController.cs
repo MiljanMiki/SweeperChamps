@@ -32,14 +32,7 @@ namespace SC_Backend.Controllers
         {
             var listGames = await _gameRepository.GetAllAsync();
 
-            return listGames.Select(game => new GameDto
-            {
-                GamesId = game.GamesId,
-                StartTime = game.StartTime,
-                EndTime = game.EndTime,
-                Status = game.Status,
-                GameSettingsId = game.GameSettingsId
-            }).ToList();
+            return listGames.Select(MapToDto).ToList();
         }
 
         // GET: api/Games/5
@@ -56,13 +49,9 @@ namespace SC_Backend.Controllers
                 return NotFound($"Game with id {id} does not exist");
             }
 
-            return new GameDto {
-                GamesId = game.GamesId,
-                StartTime = game.StartTime, 
-                EndTime = game.EndTime,
-                Status = game.Status,
-                GameSettingsId = game.GameSettingsId
-            };
+           
+
+            return Ok(MapToDto(game));
         }
 
         // PUT: api/Games/5
@@ -191,14 +180,7 @@ namespace SC_Backend.Controllers
             {
                 var games = await _gameRepository.FilterGameByStatusAndDateAsync(status, date, day, month, year);
 
-                return Ok(games.Select(g => new GameDto
-                {
-                    GamesId = g.GamesId,
-                    StartTime = g.StartTime,
-                    EndTime = g.EndTime,
-                    Status = g.Status,
-                    GameSettingsId = g.GameSettingsId
-                }).ToList());
+                return Ok(games.Select(MapToDto).ToList());
             }
             catch (ArgumentException ex)
             {
@@ -215,16 +197,69 @@ namespace SC_Backend.Controllers
 
             var games = await _gameRepository.FilterByDurationAsync(durationSeconds, longer);
 
-            return games.Select(g => new GameDto
+            return games.Select(MapToDto).ToList();
+        }
+
+        [HttpGet("live-games/{limit}")]
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetLiveGamesAsync(int limit)
+        {
+            if (limit <= 0)
+                return BadRequest("Limit must be a positive number.");
+
+            var games = await _gameRepository.GetLiveGamesAsync(limit);
+
+            return Ok(games.Select(MapToDto).ToList());
+        }
+
+        [HttpPost("mark-game/{gameId}/{durationSeconds}/{winningTeam}")]
+        public async Task<IActionResult> MarkGameFinishedAsync(int gameId, int durationSeconds, TeamColors winningTeam)
+        {
+            if (gameId <= 0)
+                return BadRequest("ID cannot be negative or 0");
+            if (durationSeconds <= 0)
+                return BadRequest("Duration cannot be negative or 0");
+            if(!Enum.IsDefined(typeof(TeamColors), winningTeam))
+                return BadRequest($"Value {winningTeam} of {nameof(TeamColors)} is not defined");
+
+            await _gameRepository.MarkGameAsFinishedAsync(gameId,durationSeconds, winningTeam);
+
+            return NoContent();
+        }
+
+        [HttpGet("with-player/{playerID}/{limit}/{isRanked}")]
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetPlayersGamesAsync(int playerID,int limit,bool isRanked)
+        {
+            if (playerID <= 0)
+                return BadRequest("ID cannot be negative or 0");
+            if (limit <= 0)
+                return BadRequest("Limit must be a positive number.");
+
+            try
+            {
+                var games = await _gameRepository.GetGamesWithPlayer(playerID, limit, isRanked);
+
+                return Ok(games.Select(MapToDto).ToList());
+            }
+            catch(KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
+
+        private static GameDto MapToDto(Game g)
+        {
+            return new GameDto
             {
                 GamesId = g.GamesId,
                 StartTime = g.StartTime,
                 EndTime = g.EndTime,
                 Status = g.Status,
+                DurationSeconds = g.DurationSeconds,
+                IsRanked = g.IsRanked,
+                WinningTeam = g.WinningTeam,
                 GameSettingsId = g.GameSettingsId
-            }).ToList();
+            };
         }
-
         private async Task<bool> GameExists(int id)
         {
             return (await _gameRepository.GetAsync(id)) != null;
