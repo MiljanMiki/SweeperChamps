@@ -1,15 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
+using NuGet.Configuration;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
+using SC_Backend.DTOs.Games;
 using SC_Backend.Repositories.AsyncInterfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using System.Threading.Tasks;
 
 namespace SC_Backend.Controllers
 {
@@ -31,13 +34,7 @@ namespace SC_Backend.Controllers
         public async Task<ActionResult<IEnumerable<GamePlayerDto>>> GetGamePlayersAsync()
         {
             var list = await _gamePlayerRepository.GetAllAsync();
-            return list.Select(gamePlayer => new GamePlayerDto
-            {
-                PlayerId = gamePlayer.PlayerId,
-                GameId = gamePlayer.GameId,
-                TeamColor = gamePlayer.TeamColor,
-                Score = gamePlayer.Score
-            }).ToList();
+            return list.Select(MapToDto).ToList();
         }
 
         // GET: api/GamePlayers/5
@@ -54,13 +51,7 @@ namespace SC_Backend.Controllers
                 return NotFound();
             }
 
-            return new GamePlayerDto
-            {
-                PlayerId=gamePlayer.PlayerId,
-                GameId = gamePlayer.GameId,
-                TeamColor=gamePlayer.TeamColor,
-                Score=gamePlayer.Score
-            };
+            return MapToDto(gamePlayer);
         }
 
         // PUT: api/GamePlayers/5
@@ -271,6 +262,151 @@ namespace SC_Backend.Controllers
                 return BadRequest(ex.Message);
             }
 
+        }
+
+        [HttpGet("loaded/{id}")]
+        public async Task<ActionResult<LoadedPlayerDto>> GetLoadedGamePlayerAsync(int id)
+        {
+            if (id <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
+            var gp = await _gamePlayerRepository.GetLoadedGamePlayerAsync(id);
+
+            if (gp == null)
+                return NotFound($"{nameof(GamePlayer)} with the given ID {id} does not exist or the navigation properties are null.");
+
+            return Ok(new LoadedPlayerDto
+            {
+                GamePlayer = MapToDto(gp),
+                Game = new GameSummaryDto
+                {
+                    GamesId = gp.Game.GamesId,
+                    StartTime = gp.Game.StartTime,
+                    EndTime = gp.Game.EndTime,
+                    Status = gp.Game.Status,
+                    Score = gp.Score//redundantno!!!! vec ga ima u GamePlayer
+                },
+                User = new UserSummaryDto
+                {
+                    Username = gp.Player.Username,
+                    Datecreated = gp.Player.Datecreated,
+                    Elo = gp.Player.Elo
+                }
+            });
+        }
+
+        [HttpGet("from-setting/{playerID}/{settingID}")]
+        public async Task<ActionResult<IEnumerable<DTOs.Games.GameDto>>> GetGamesFromSetting(int playerID, int settingID)
+        {
+            if (playerID <= 0 || settingID <= 0)
+                return BadRequest("ID cannot be negative or 0");
+
+            try
+            {
+                var games = await _gamePlayerRepository.GetGamesFromPlayerWithSettingAsync(playerID, settingID);
+
+
+                return Ok(games.Select(g => new GameDto
+                {
+                    GamesId = g.GamesId,
+                    StartTime = g.StartTime,
+                    EndTime = g.EndTime,
+                    Status = g.Status,
+                    IsRanked = g.IsRanked,
+                    DurationSeconds = g.DurationSeconds,
+                    WinningTeam = g.WinningTeam,
+                    GameSettingsId = g.GameSettingsId
+                }));
+            }
+            catch(KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
+
+        [HttpGet("match-history")]
+        public async Task<ActionResult<IEnumerable<MatchHistoryDto>>> GetUserMatchHistoryAsync(MatchHistoryRequestDto dto)
+        {
+            if (dto == null)
+                return BadRequest("DTO is null");
+            if (dto.playerID <= 0)
+                return BadRequest("ID cannot be negative or 0");
+            if (dto.page < 0)
+                return BadRequest("Page cannot be negative!");
+            if (dto.pageSize <= 0)
+                return BadRequest("Page size cannot be negative or 0!");
+
+            var history = await _gamePlayerRepository.GetUserMatchHistoryAsync(dto.playerID, dto.page, dto.pageSize);
+
+            var dtos = history.Select(gp => new MatchHistoryDto
+            {
+                GamePlayer = MapToDto(gp),
+                Game = new GameSummaryDto
+                {
+                    GamesId = gp.Game.GamesId,
+                    StartTime = gp.Game.StartTime,
+                    EndTime = gp.Game.EndTime,
+                    Status = gp.Game.Status,
+                    Score = gp.Score
+                }
+            }).ToList();
+
+            return Ok(dtos);
+        }
+
+        
+        [HttpPut("results")]
+        //IDs that do not map to any user will be skipped! 
+        public async Task<IActionResult> UpdatePlayerResultsAsync(IEnumerable<PlayerStatsRequestDto> finalPlayerStats)
+        {
+            if (finalPlayerStats == null)
+                return BadRequest("DTO list is null");
+            if (finalPlayerStats.Any(ps => ps.GamePlayerId <= 0))
+                return BadRequest("All IDs must be greater than 0");
+            if (finalPlayerStats.Any(ps => ps.Score <0))
+                return BadRequest("All scores must be positive");
+            if (finalPlayerStats.Any(ps => ps.Accuracy < 0))
+                return BadRequest("All accuracies must be positive");
+
+            List<GamePlayer> gamePlayers = new();
+            foreach(var dto in finalPlayerStats)
+            {
+                var gp = await _gamePlayerRepository.GetAsync(dto.GamePlayerId);
+                if (gp != null)
+                {
+                    gp.Score = dto.Score;
+                    gp.Outcome = dto.Outcome;
+                    gp.EloChange = dto.EloChange;
+                    gp.Accuracy = dto.Accuracy;
+
+                    gamePlayers.Add(gp);
+                }
+            }
+
+            await _gamePlayerRepository.UpdatePlayerResultsAsync(gamePlayers);
+
+            return NoContent();
+        }
+
+        [HttpGet("score/{playerID}")]
+        public async Task<ActionResult<int>> GetTotalScoreForUserAsync(int playerID)
+        {
+            if(playerID <=0)
+                return BadRequest("ID cannot be negative or 0");
+
+            var score = await _gamePlayerRepository.GetTotalScoreForUserAsync(playerID);
+
+            return Ok(score);
+        }
+        private static GamePlayerDto MapToDto(GamePlayer gp)
+        {
+            return new GamePlayerDto
+            {
+                PlayerId = gp.PlayerId,
+                GameId = gp.GameId,
+                TeamColor = gp.TeamColor,
+                Score = gp.Score
+            };
         }
         private async Task<bool> GamePlayerExists(int id)
         {

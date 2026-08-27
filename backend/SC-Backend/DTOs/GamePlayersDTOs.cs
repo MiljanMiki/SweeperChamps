@@ -65,9 +65,6 @@ namespace SC_Backend.DTOs.GamePlayers
 
         public short? Elo { get; set; }
     }
-
-
-
     public record GameSummaryDto
     {
         public int GamesId { get; set; }
@@ -78,5 +75,47 @@ namespace SC_Backend.DTOs.GamePlayers
         public GameStatuses Status { get; set; }
 
         public int Score { get; set; }
+    }
+
+    public record LoadedPlayerDto
+    {
+        public GamePlayerDto GamePlayer { get; set; } = null!;
+
+        public GameSummaryDto Game { get; set; } = null!;
+
+        public UserSummaryDto User { get; set; } = null!;
+    }
+
+    public record UserSummaryDto
+    {
+        public string Username { get; set; } = null!;
+        public DateOnly Datecreated { get; set; }
+        public short? Elo { get; set; }
+    }
+
+    public record MatchHistoryRequestDto
+    {
+        public int playerID { get; set; }
+        public int page { get; set; }
+        public int pageSize { get; set; }
+    }
+    public record MatchHistoryDto
+    {
+        public GamePlayerDto GamePlayer { get; set; }
+
+        public GameSummaryDto Game { get; set; }
+    }
+
+    public record PlayerStatsRequestDto
+    {
+        public int GamePlayerId { get; set; }
+
+        public int Score { get; set; }
+
+        public Outcomes Outcome { get; set; }
+
+        public short? EloChange { get; set; }
+        
+        public double Accuracy { get; set; }
     }
 }

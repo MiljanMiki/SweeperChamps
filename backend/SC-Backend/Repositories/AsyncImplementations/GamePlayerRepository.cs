@@ -3,6 +3,7 @@ using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GamePlayers;
 using SC_Backend.Repositories.AsyncInterfaces;
+using System.Configuration;
 using System.Threading.Tasks;
 
 namespace SC_Backend.Repositories.AsyncImplementations
@@ -81,16 +82,25 @@ namespace SC_Backend.Repositories.AsyncImplementations
 
         public async Task<GamePlayer?> GetLoadedGamePlayerAsync(int id)
         {
-            return await DbSet.AsNoTracking().Include(g => g.Game).Include(g => g.Player).FirstOrDefaultAsync(g => g.GamePlayersId == id);
+            return await DbSet
+                .AsNoTracking()
+                .Include(g => g.Game)
+                .Include(g => g.Player)
+                .FirstOrDefaultAsync(g => g.GamePlayersId == id);
         }
 
         public async Task<IEnumerable<Game>> GetGamesFromPlayerWithSettingAsync(int playerID, int settingID)
         {
-            return await DbSet
+            var games = await DbSet
                 .AsNoTracking()
                 .Where(g=>g.PlayerId == playerID && g.Game.GameSettingsId == settingID)
                 .Select(g=>g.Game)
                 .ToListAsync();
+
+            if (games.Count == 0 && !await Context.GameSettings.AnyAsync(gs => gs.GameSettingsId == settingID) )
+                throw new KeyNotFoundException($"{nameof(GameSetting)} does not exist with given IDs");
+
+            return games;
         }
 
         public async Task<IEnumerable<GamePlayer>> GetUserMatchHistoryAsync(int userId, int page, int pageSize)

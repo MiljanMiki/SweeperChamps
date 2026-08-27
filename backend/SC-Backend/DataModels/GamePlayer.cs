@@ -55,5 +55,6 @@ public enum Outcomes
     Loss,
     Draw,
     Abandoned,
-    Disconnected
+    Disconnected,
+    Pending
 }
