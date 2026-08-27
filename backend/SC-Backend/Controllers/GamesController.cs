@@ -111,10 +111,17 @@ namespace SC_Backend.Controllers
                 return BadRequest("DTO is null");
             if (dto.GameSettingsId <= 0)
                 return BadRequest("ID cannot be negative or 0");
-            if (dto.EndTime < dto.StartTime)
+            if (dto.EndTime.HasValue && dto.EndTime.Value < dto.StartTime)
                 return BadRequest("Game cannot end before it started.");
+            if (dto.DurationSeconds.HasValue && !dto.EndTime.HasValue)
+                return BadRequest("Game cannot have duration but have no end time.");
+            if (dto.DurationSeconds.HasValue && dto.EndTime.HasValue && dto.DurationSeconds.Value > (dto.EndTime.Value - dto.StartTime).TotalSeconds)
+                return BadRequest("Must be equal to or less than the difference between end and start time.");
+            if (dto.WinningTeam.HasValue && dto.Status != GameStatuses.Finished)
+                return BadRequest("Cannot have a winning team if game didnt finish properly.");
+            
 
-            if (dto.EndTime == null && dto.Status == GameStatuses.Finished || dto.Status == GameStatuses.Terminated)
+            if (dto.EndTime == null && (dto.Status == GameStatuses.Finished || dto.Status == GameStatuses.Terminated))
                 return BadRequest("Game that has ended must have an end time.");
             if (dto.EndTime != null && (dto.Status == GameStatuses.Aborted || dto.Status == GameStatuses.InProgress))
                 return BadRequest("A game that has not ended correctly cannot have end time.");
@@ -127,6 +134,9 @@ namespace SC_Backend.Controllers
                 StartTime = dto.StartTime,
                 EndTime = dto.EndTime,
                 Status = dto.Status,
+                IsRanked = dto.IsRanked,
+                DurationSeconds = dto.DurationSeconds,
+                WinningTeam = dto.WinningTeam,
                 GameSettingsId = dto.GameSettingsId,
             };
             try

@@ -96,7 +96,11 @@ namespace SC_Backend.Tests.Controllers
             var putDto = new PutGamePlayerRequestDto
             {
                 Score = 250,
+                Outcome = Outcomes.Pending,
+                Accuracy = 13.25,
+                EloChange = 3,
                 TeamColor = TeamColors.Blue
+
             };
 
             // Act

@@ -62,11 +62,16 @@ namespace SC_Backend.Controllers
                 return BadRequest("DTO is null");
 
             if (id <= 0)
-                return BadRequest("ID cannot be negative or 0");
+                return BadRequest("ID cannot be negative or 0.");
             if (gamePlayerDto.Score < 0)
-                return BadRequest("Score cannot be negative");
+                return BadRequest("Score cannot be negative.");
             if (!Enum.IsDefined(typeof(TeamColors), gamePlayerDto.TeamColor))
-                return BadRequest("Enum value is not defined");
+                return BadRequest($"Enum value for {nameof(TeamColors)} is not defined.");
+            if (!Enum.IsDefined(typeof(Outcomes), gamePlayerDto.Outcome))
+                return BadRequest($"Enum value for {nameof(Outcomes)} is not defined.");
+            if (gamePlayerDto.Accuracy < 0)
+                return BadRequest("Accuracy must be greater or equal to 0.");
+            
 
             var gamePlayer = await _gamePlayerRepository.GetAsync(id);
 
@@ -75,11 +80,16 @@ namespace SC_Backend.Controllers
                 return BadRequest($"Game player with ID {id} doesnt exist.");
             }
 
+            //if (gamePlayer.Game.IsRanked && !gamePlayerDto.EloChange.HasValue)
+            //    return BadRequest("");
 
             gamePlayer.Score = gamePlayerDto.Score;
             gamePlayer.TeamColor = gamePlayerDto.TeamColor;
+            gamePlayer.Outcome = gamePlayerDto.Outcome;
+            gamePlayer.Accuracy = gamePlayerDto.Accuracy;
+            gamePlayer.EloChange = gamePlayerDto.EloChange;
 
-            //_gamePlayerRepository.Update(gamePlayer);
+            _gamePlayerRepository.Update(gamePlayer);
 
             try
             {

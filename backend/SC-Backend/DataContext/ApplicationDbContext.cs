@@ -52,12 +52,16 @@ public partial class ApplicationDbContext : DbContext
             //      .HasConstraintName("game_gameSettingsId_fk");
 
             entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.WinningTeam).HasConversion<string>();
         });
 
         modelBuilder.Entity<Game>(entity =>
             entity.ToTable("games", tb =>
             {
                 tb.HasCheckConstraint("CK_valid_end_time", "end_time IS NULL OR (end_time > start_time)");
+                tb.HasCheckConstraint("CK_valid_duration_seconds", "duration_seconds IS NULL OR " +
+                    "end_time IS NULL OR " +
+                    "duration_seconds <= EXTRACT(EPOCH FROM(end_time - start_time))");
             })
         );
 
@@ -66,6 +70,7 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.GamePlayersId).HasName("game_players_pkey");
 
             entity.Property(e => e.TeamColor).HasConversion<string>();
+            entity.Property(e => e.Outcome).HasConversion<string>();
 
             entity.Property(e => e.Score).HasDefaultValue(0);
 

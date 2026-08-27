@@ -12,7 +12,13 @@ namespace SC_Backend.DTOs.GamePlayers
         public TeamColors TeamColor { get; set; }
 
         public int Score { get; set; }
+
+        public Outcomes Outcome { get; set; }
+        public short? EloChange {get; set;}
+
+        public double Accuracy { get; set; }
     }
+
 
     public record GamePlayerDto
     {
