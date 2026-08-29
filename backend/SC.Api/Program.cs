@@ -2,6 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SC.Api.Hubs;
+using SC.Api.Services;
+using SC.Api.Services.Interfaces;
 using SC_Backend.DataContext;
 using SC_Backend.Services;
 using System.Text;
@@ -54,6 +57,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 builder.Services.AddAuthorization();
+
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IMatchmakingPublisher, RabbitMqMatchmakingPublisher>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddLogging();
@@ -110,5 +116,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<MatchmakingHub>("hubs/matchmaking");
 
 app.Run();
