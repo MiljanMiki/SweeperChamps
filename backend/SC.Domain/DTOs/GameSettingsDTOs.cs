@@ -1,6 +1,6 @@
-﻿using SC_Backend.DataModels;
+﻿using SC.Domain.DataModels;
 
-namespace SC_Backend.DTOs.GameSettings
+namespace SC.Domain.DTOs.GameSettings
 {
 
     public record GameSettingDto

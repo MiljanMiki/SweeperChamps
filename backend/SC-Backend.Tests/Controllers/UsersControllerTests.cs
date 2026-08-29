@@ -2,9 +2,9 @@
 using Moq;
 using NUnit.Framework;
 using SC.Api.Controllers;
-using SC_Backend.DataModels;
-using SC_Backend.DTOs.Users;
-using SC_Backend.Repositories.AsyncInterfaces;
+using SC.Domain.DataModels;
+using SC.Domain.DTOs.Users;
+using SC.Domain.Repositories.AsyncInterfaces;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;

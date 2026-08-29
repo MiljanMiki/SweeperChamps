@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
-using SC_Backend.Repositories.AsyncInterfaces;
+using SC.Domain.Repositories.AsyncInterfaces;
 
 namespace SC_Backend.Repositories.AsyncImplementations
 {

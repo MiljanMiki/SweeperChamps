@@ -1,8 +1,8 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
-using SC_Backend.DataModels;
-using SC_Backend.Repositories.AsyncInterfaces;
+using SC.Domain.DataModels;
+using SC.Domain.Repositories.AsyncInterfaces;
 using System.Configuration;
 using System.Threading.Tasks;
 

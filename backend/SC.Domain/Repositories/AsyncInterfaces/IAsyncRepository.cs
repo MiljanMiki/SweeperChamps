@@ -1,4 +1,4 @@
-﻿namespace SC_Backend.Repositories.AsyncInterfaces
+﻿namespace SC.Domain.Repositories.AsyncInterfaces
 {
     public interface IAsyncRepository<T> where T: class
     {

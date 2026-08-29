@@ -1,7 +1,7 @@
-﻿using SC_Backend.DataModels;
+﻿using SC.Domain.DataModels;
 using System.Threading.Tasks;
 
-namespace SC_Backend.Repositories.AsyncInterfaces
+namespace SC.Domain.Repositories.AsyncInterfaces
 {
     public interface IUserStatsRepository : IAsyncRepository<UserStats>
     {

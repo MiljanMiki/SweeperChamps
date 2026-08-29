@@ -1,6 +1,6 @@
-﻿using SC_Backend.DataModels;
+﻿using SC.Domain.DataModels;
 
-namespace SC_Backend.Repositories.AsyncInterfaces
+namespace SC.Domain.Repositories.AsyncInterfaces
 {
     public interface IUserRepository : IAsyncRepository<User>
     {

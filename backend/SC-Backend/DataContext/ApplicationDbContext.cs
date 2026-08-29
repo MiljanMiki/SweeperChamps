@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
-using SC_Backend.DataModels;
+using SC.Domain.DataModels;
 
 namespace SC_Backend.DataContext;
 

@@ -1,7 +1,7 @@
-﻿using SC_Backend.DataModels;
+﻿using SC.Domain.DataModels;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SC_Backend.DTOs.GamePlayers
+namespace SC.Domain.DTOs.GamePlayers
 {
     public record PutGamePlayerRequestDto
     {

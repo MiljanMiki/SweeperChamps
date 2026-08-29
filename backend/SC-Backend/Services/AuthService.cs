@@ -2,7 +2,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using SC_Backend.DataModels;
+using SC.Domain.DataModels;
 
 namespace SC_Backend.Services
 {

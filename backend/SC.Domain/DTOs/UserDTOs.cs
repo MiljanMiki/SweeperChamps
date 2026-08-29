@@ -1,9 +1,9 @@
-﻿using SC_Backend.DataModels;
-using SC_Backend.DTOs.GamePlayers;
+﻿using SC.Domain.DataModels;
+using SC.Domain.DTOs.GamePlayers;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SC_Backend.DTOs.Users
+namespace SC.Domain.DTOs.Users
 {
     public record UserDTO
     {

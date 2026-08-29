@@ -1,4 +1,4 @@
-﻿namespace SC_Backend.DTOs.Moves
+﻿namespace SC.Domain.DTOs.Moves
 {
     public record MoveDTO
     {

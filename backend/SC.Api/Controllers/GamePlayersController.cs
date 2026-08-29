@@ -4,10 +4,10 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using NuGet.Configuration;
 using SC_Backend.DataContext;
-using SC_Backend.DataModels;
-using SC_Backend.DTOs.GamePlayers;
-using SC_Backend.DTOs.Games;
-using SC_Backend.Repositories.AsyncInterfaces;
+using SC.Domain.DataModels;
+using SC.Domain.DTOs.GamePlayers;
+using SC.Domain.DTOs.Games;
+using SC.Domain.Repositories.AsyncInterfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -306,7 +306,7 @@ namespace SC.Api.Controllers
         }
 
         [HttpGet("from-setting/{playerID}/{settingID}")]
-        public async Task<ActionResult<IEnumerable<SC_Backend.DTOs.Games.GameDto>>> GetGamesFromSetting(int playerID, int settingID)
+        public async Task<ActionResult<IEnumerable<SC.Domain.DTOs.Games.GameDto>>> GetGamesFromSetting(int playerID, int settingID)
         {
             if (playerID <= 0 || settingID <= 0)
                 return BadRequest("ID cannot be negative or 0");

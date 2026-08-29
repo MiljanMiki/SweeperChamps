@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using SC_Backend.DataContext;
-using SC_Backend.DataModels;
+using SC.Domain.DataModels;
 using SC_Backend.Repositories;
 using SC_Backend.Repositories.AsyncImplementations;
 using SC_Backend.Services;

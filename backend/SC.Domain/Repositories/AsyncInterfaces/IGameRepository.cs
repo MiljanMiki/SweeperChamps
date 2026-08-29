@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using SC_Backend.DataModels;
-using SC_Backend.DTOs.Games;
+﻿
+using SC.Domain.DataModels;
+using SC.Domain.DTOs.Games;
 
-namespace SC_Backend.Repositories.AsyncInterfaces
+namespace SC.Domain.Repositories.AsyncInterfaces
 {
     public interface IGameRepository : IAsyncRepository<Game>
     {

@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SC_Backend.DTOs
+namespace SC.Domain.DTOs
 {
     public record LoginResponseDto
     {

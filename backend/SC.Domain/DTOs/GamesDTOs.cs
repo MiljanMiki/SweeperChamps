@@ -1,8 +1,8 @@
-﻿using SC_Backend.DataModels;
+﻿using SC.Domain.DataModels;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SC_Backend.DTOs.Games
+namespace SC.Domain.DTOs.Games
 {
     public record GameDto
     {

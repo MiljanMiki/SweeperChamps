@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
 
-namespace SC_Backend.DataModels;
+
+namespace SC.Domain.DataModels;
 
 [Table("users")]
-[Index("Email", Name = "users_email_key", IsUnique = true)]
-[Index("Username", Name = "users_username_key", IsUnique = true)]
+//[Index("Email", Name = "users_email_key", IsUnique = true)]
+//[Index("Username", Name = "users_username_key", IsUnique = true)]
 public partial class User
 {
     [Column("username")]

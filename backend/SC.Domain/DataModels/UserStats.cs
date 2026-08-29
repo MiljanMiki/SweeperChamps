@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
 
-namespace SC_Backend.DataModels;
+
+namespace SC.Domain.DataModels;
 
 [Table("user_stats")]
 public partial class UserStats

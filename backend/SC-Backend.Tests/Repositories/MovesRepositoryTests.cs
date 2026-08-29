@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using SC_Backend.DataContext;
-using SC_Backend.DataModels;
+using SC.Domain.DataModels;
 using SC_Backend.Repositories.AsyncImplementations;
 using System;
 using System.Collections.Generic;
