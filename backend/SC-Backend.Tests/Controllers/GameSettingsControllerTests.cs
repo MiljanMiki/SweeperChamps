@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
-using SC_Backend.Controllers;
+using SC.Api.Controllers;
 using SC_Backend.DataContext;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.GameSettings;

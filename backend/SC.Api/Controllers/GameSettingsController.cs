@@ -11,7 +11,7 @@ using SC_Backend.DataModels;
 using SC_Backend.DTOs.GameSettings;
 using SC_Backend.Repositories.AsyncInterfaces;
 
-namespace SC_Backend.Controllers
+namespace SC.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

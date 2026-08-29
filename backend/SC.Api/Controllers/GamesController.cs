@@ -12,7 +12,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
-namespace SC_Backend.Controllers
+namespace SC.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

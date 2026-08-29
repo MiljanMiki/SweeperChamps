@@ -13,7 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace SC_Backend.Controllers
+namespace SC.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NUnit.Framework;
-using SC_Backend.Controllers;
+using SC.Api.Controllers;
 using SC_Backend.DataModels;
 using SC_Backend.DTOs.Moves;
 using SC_Backend.Repositories.AsyncInterfaces;

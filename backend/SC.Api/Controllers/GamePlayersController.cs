@@ -14,7 +14,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 
-namespace SC_Backend.Controllers
+namespace SC.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -306,7 +306,7 @@ namespace SC_Backend.Controllers
         }
 
         [HttpGet("from-setting/{playerID}/{settingID}")]
-        public async Task<ActionResult<IEnumerable<DTOs.Games.GameDto>>> GetGamesFromSetting(int playerID, int settingID)
+        public async Task<ActionResult<IEnumerable<SC_Backend.DTOs.Games.GameDto>>> GetGamesFromSetting(int playerID, int settingID)
         {
             if (playerID <= 0 || settingID <= 0)
                 return BadRequest("ID cannot be negative or 0");
