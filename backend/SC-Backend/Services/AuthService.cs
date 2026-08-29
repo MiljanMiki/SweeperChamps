@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using SC.Domain.DataModels;
+using Microsoft.Extensions.Configuration;
 
 namespace SC_Backend.Services
 {
