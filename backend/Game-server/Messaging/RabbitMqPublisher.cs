@@ -10,19 +10,11 @@ public interface IRabbitMqPublisher
     Task PublishGameFinishedAsync(GameFinishedMessage message);
 }
 
-/// <summary>
-/// Thin wrapper around RabbitMQ.Client 7.x (fully async API: IChannel,
-/// CreateChannelAsync, BasicPublishAsync, etc). Queue names declared here
-/// must match what the web API listens on / publishes to.
-/// </summary>
 public class RabbitMqPublisher : IRabbitMqPublisher, IAsyncDisposable
 {
-    private const string MovesQueue = "game.moves";
-    private const string GameFinishedQueue = "game.finished";
-
-    private readonly IConnection _connection;
-    private IChannel? _channel;
-    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private readonly IConnection    _connection;
+    private IChannel?               _channel;
+    private readonly SemaphoreSlim  _initLock = new(1, 1);
 
     public RabbitMqPublisher(IConnection connection)
     {
@@ -39,29 +31,24 @@ public class RabbitMqPublisher : IRabbitMqPublisher, IAsyncDisposable
             if (_channel is null)
             {
                 _channel = await _connection.CreateChannelAsync();
-                await _channel.QueueDeclareAsync(MovesQueue, durable: true, exclusive: false, autoDelete: false);
-                await _channel.QueueDeclareAsync(GameFinishedQueue, durable: true, exclusive: false, autoDelete: false);
+                await _channel.QueueDeclareAsync(QueueNames.GameMoves,    durable: true, exclusive: false, autoDelete: false);
+                await _channel.QueueDeclareAsync(QueueNames.GameFinished, durable: true, exclusive: false, autoDelete: false);
             }
         }
-        finally
-        {
-            _initLock.Release();
-        }
+        finally { _initLock.Release(); }
 
         return _channel;
     }
 
-    public Task PublishMoveMadeAsync(MoveMadeMessage message) => PublishAsync(MovesQueue, message);
-
-    public Task PublishGameFinishedAsync(GameFinishedMessage message) => PublishAsync(GameFinishedQueue, message);
+    public Task PublishMoveMadeAsync(MoveMadeMessage message)       => PublishAsync(QueueNames.GameMoves,    message);
+    public Task PublishGameFinishedAsync(GameFinishedMessage message) => PublishAsync(QueueNames.GameFinished, message);
 
     private async Task PublishAsync<T>(string queue, T message)
     {
         var channel = await GetChannelAsync();
-        var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
-        var props = new BasicProperties { Persistent = true };
-
-        await channel.BasicPublishAsync(exchange: "", routingKey: queue, mandatory: false, basicProperties: props, body: body);
+        var body    = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+        var props   = new BasicProperties { Persistent = true };
+        await channel.BasicPublishAsync(exchange: string.Empty, routingKey: queue, mandatory: false, basicProperties: props, body: body);
     }
 
     public async ValueTask DisposeAsync()

@@ -1,11 +1,6 @@
 namespace SC_GameServer.GameEngine;
 
-public enum CellState
-{
-    Hidden,
-    Revealed,
-    Flagged
-}
+public enum CellState { Hidden, Revealed, Flagged }
 
 public class Cell
 {
@@ -15,17 +10,9 @@ public class Cell
     public int AdjacentMineCount { get; set; }
     public CellState State { get; set; } = CellState.Hidden;
 
-    public Cell(int x, int y)
-    {
-        X = x;
-        Y = y;
-    }
+    public Cell(int x, int y) { X = x; Y = y; }
 }
 
-/// <summary>
-/// Owns the grid, mine placement, and adjacency counts. Mines and adjacency
-/// are computed once here at game creation, not recalculated per move.
-/// </summary>
 public class Board
 {
     public int Width { get; }
@@ -38,9 +25,9 @@ public class Board
 
     private static readonly (int dx, int dy)[] Neighbors8 =
     {
-        (-1, -1), (0, -1), (1, -1),
-        (-1, 0),           (1, 0),
-        (-1, 1),  (0, 1),  (1, 1)
+        (-1,-1),(0,-1),(1,-1),
+        (-1, 0),      (1, 0),
+        (-1, 1),(0, 1),(1, 1)
     };
 
     public Board(int width, int height, int mineCount, int? randomSeed = null)
@@ -48,8 +35,8 @@ public class Board
         Width = width;
         Height = height;
         MineCount = mineCount;
-
         Grid = new Cell[width, height];
+
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
                 Grid[x, y] = new Cell(x, y);
@@ -66,11 +53,7 @@ public class Board
         {
             int x = rng.Next(Width);
             int y = rng.Next(Height);
-            if (!Grid[x, y].IsMine)
-            {
-                Grid[x, y].IsMine = true;
-                placed++;
-            }
+            if (!Grid[x, y].IsMine) { Grid[x, y].IsMine = true; placed++; }
         }
     }
 
@@ -104,15 +87,6 @@ public class Board
         }
     }
 
-    /// <summary>
-    /// Reveals (startX, startY). If it has zero adjacent mines, cascades
-    /// through every connected zero-count cell, also revealing (but not
-    /// cascading past) the non-zero cells bordering that region - standard
-    /// Minesweeper flood fill. Mines are never auto-revealed by a cascade
-    /// (a zero-count cell can't neighbor a mine by definition).
-    /// Returns every cell newly revealed by this call, including the start cell.
-    /// Caller must ensure the start cell is Hidden and not a mine.
-    /// </summary>
     public List<Cell> RevealWithCascade(int startX, int startY)
     {
         var revealed = new List<Cell>();
@@ -130,13 +104,9 @@ public class Board
             foreach (var neighbor in GetNeighbors(current.X, current.Y))
             {
                 if (neighbor.State != CellState.Hidden || neighbor.IsMine) continue;
-
                 neighbor.State = CellState.Revealed;
                 revealed.Add(neighbor);
-
-                if (neighbor.AdjacentMineCount == 0)
-                    queue.Enqueue(neighbor); // keep cascading through more zero cells
-                // non-zero neighbors are revealed but don't cascade further
+                if (neighbor.AdjacentMineCount == 0) queue.Enqueue(neighbor);
             }
         }
 
