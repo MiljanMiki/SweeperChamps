@@ -3,15 +3,21 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  slikaURL?: string;
 }
 
 export interface AuthResponse {
-  user: User;
-  token: string;
+  user?: User;
+  token?: string;
+  // Sometimes backend returns these directly
+  id?: string;
+  username?: string;
+  email?: string;
+  slikaURL?: string;
 }
 
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -19,16 +25,5 @@ export interface RegisterCredentials {
   username: string;
   email: string;
   password: string;
-  confirmPassword: string;
-}
-
-export interface GameState {
-  board: number[][];
-  revealed: boolean[][];
-  flagged: boolean[][];
-  gameOver: boolean;
-  won: boolean;
-  mines: number;
-  rows: number;
-  cols: number;
+  slikaURL: string;
 }

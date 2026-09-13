@@ -30,7 +30,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SC.Domain\SC.Domain.csproj" />
+    <Folder Include="Migrations\" />
+	<ProjectReference Include="..\SC.Domain\SC.Domain.csproj" />
   </ItemGroup>
 
 </Project>

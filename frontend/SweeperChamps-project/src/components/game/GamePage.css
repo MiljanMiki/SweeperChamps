@@ -1,0 +1,164 @@
+/* src/components/game/GamePage.css */
+.game-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.game-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.connection-status {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #f0f0f0;
+}
+
+.connection-status.is-connected {
+  background: #d4f5d4;
+  color: #2a6b2a;
+}
+
+.connection-status.is-connecting {
+  background: #fff4d4;
+  color: #8a6b00;
+}
+
+.game-page__players {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.player-card {
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 140px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.player-card--red {
+  background: #ffe5e5;
+  border-color: #ff8080;
+}
+
+.player-card--blue {
+  background: #e5eeff;
+  border-color: #80a8ff;
+}
+
+.player-card.is-active {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border-color: #333;
+}
+
+.player-card__name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.player-card__team {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+  letter-spacing: 1px;
+}
+
+.player-card__score {
+  font-size: 14px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.game-page__toast {
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.game-page__toast--error {
+  background: #ffe0e0;
+  color: #a00;
+}
+
+.game-page__toast--warning {
+  background: #fff4d4;
+  color: #8a6b00;
+}
+
+.game-over-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.game-over-card {
+  background: white;
+  padding: 32px 40px;
+  border-radius: 12px;
+  min-width: 320px;
+  text-align: center;
+}
+
+.game-over-card h2 {
+  margin: 0 0 20px;
+}
+
+.game-over__results {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+}
+
+.game-over__results li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+}
+
+.game-over__button {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.game-over__button:hover {
+  background: #5a67d8;
+}
+
+.game-page__loading,
+.game-page__error {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 16px;
+  color: #666;
+}

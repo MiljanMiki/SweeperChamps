@@ -4,11 +4,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './Auth.css';
 
-const Register: React.FC = () => {
+function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [slikaURL, setSlikaURL] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -34,7 +35,7 @@ const Register: React.FC = () => {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
@@ -45,7 +46,12 @@ const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      await register({ username, email, password, confirmPassword });
+      await register({
+        username,
+        email,
+        password,
+        slikaURL: slikaURL || '', // Send empty string if not provided
+      });
       navigate('/game');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -58,9 +64,9 @@ const Register: React.FC = () => {
       <div className="auth-card">
         <h2>Create Account</h2>
         <p className="auth-subtitle">Start playing Minesweeper today!</p>
-        
+
         {error && <div className="auth-error">{error}</div>}
-        
+
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label htmlFor="username">Username</label>
@@ -120,6 +126,18 @@ const Register: React.FC = () => {
             />
           </div>
 
+          <div className="form-group">
+            <label htmlFor="slikaURL">Profile Image URL (optional)</label>
+            <input
+              type="url"
+              id="slikaURL"
+              value={slikaURL}
+              onChange={(e) => setSlikaURL(e.target.value)}
+              placeholder="https://example.com/avatar.jpg"
+              disabled={loading}
+            />
+          </div>
+
           <button type="submit" className="auth-button" disabled={loading}>
             {loading ? 'Creating account...' : 'Register'}
           </button>
@@ -131,6 +149,6 @@ const Register: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default Register;

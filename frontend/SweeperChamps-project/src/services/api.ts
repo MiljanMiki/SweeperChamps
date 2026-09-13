@@ -1,13 +1,13 @@
 // src/services/api.ts
 import type { LoginCredentials, RegisterCredentials, AuthResponse } from '../types';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://localhost:7204/api';
 
 class AuthService {
   private async request<T>(
     endpoint: string,
     method: string = 'GET',
-    body?: any
+    body?: unknown
   ): Promise<T> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -33,23 +33,34 @@ class AuthService {
       let errorMessage = 'Something went wrong';
       try {
         const error = await response.json();
-        errorMessage = error.message || errorMessage;
-      } catch (e) {
-        // If response is not JSON, use status text
+        errorMessage = error.message || error.title || JSON.stringify(error);
+      } catch {
         errorMessage = response.statusText || errorMessage;
       }
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    // Handle empty responses (e.g., 204 No Content)
+    const text = await response.text();
+    if (!text) {
+      return {} as T;
+    }
+
+    // Try to parse as JSON
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      // If it's just a plain string (like a JWT token), return it wrapped
+      return { token: text } as T;
+    }
   }
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/auth/login', 'POST', credentials);
+    return this.request<AuthResponse>('/Auth/login', 'POST', credentials);
   }
 
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/auth/register', 'POST', credentials);
+    return this.request<AuthResponse>('/Auth/Register', 'POST', credentials);
   }
 }
 

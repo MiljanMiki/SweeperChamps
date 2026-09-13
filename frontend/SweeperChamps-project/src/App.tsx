@@ -1,17 +1,18 @@
 // src/App.tsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Navbar from './components/common/Navbar';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import Minesweeper from './components/game/Minesweeper';
+import Lobby from './components/lobby/Lobby';
+import GamePage from './components/game/GamePage';
 import './App.css';
 
-const App: React.FC = () => {
+function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <AuthProvider>
         <div className="app">
           <Navbar />
@@ -20,10 +21,18 @@ const App: React.FC = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route
-                path="/game"
+                path="/lobby"
                 element={
                   <ProtectedRoute>
-                    <Minesweeper />
+                    <Lobby />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/game/:gameId"
+                element={
+                  <ProtectedRoute>
+                    <GamePage />
                   </ProtectedRoute>
                 }
               />
@@ -31,7 +40,7 @@ const App: React.FC = () => {
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <Minesweeper />
+                    <Lobby />
                   </ProtectedRoute>
                 }
               />
@@ -39,8 +48,8 @@ const App: React.FC = () => {
           </div>
         </div>
       </AuthProvider>
-    </Router>
+    </BrowserRouter>
   );
-};
+}
 
 export default App;
