@@ -24,5 +24,4 @@ namespace SC.Messaging.Matchmaker
         public int GameId;
         public List<string> UserIds;
     }
-);
 }
