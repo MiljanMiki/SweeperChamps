@@ -9,12 +9,12 @@ namespace SC.Api.Hubs
     [Authorize] // Ensures Context.UserIdentifier is populated via JWT
     public class MatchmakingHub : Hub<IMatchmakingClient>
     {
-        private readonly IMatchmakingPublisher _publisher;
+        private readonly IMatchmakingService _matchmakingService;
         private readonly ILogger<MatchmakingHub> _logger;
 
-        public MatchmakingHub(IMatchmakingPublisher publisher, ILogger<MatchmakingHub> logger)
+        public MatchmakingHub(IMatchmakingService service, ILogger<MatchmakingHub> logger)
         {
-            _publisher = publisher;
+            _matchmakingService = service;
             _logger = logger;
         }
 
@@ -28,18 +28,11 @@ namespace SC.Api.Hubs
                 return;
             }
 
-            var ticket = new MatchTicketRequest
-            {
-                UserId = userId,
-                GameSettingsId = gameSettingsId,
-                IsRanked = isRanked,
-                Timestamp = DateTime.UtcNow
-            };
 
             try
             {
                 // 1. Send to RabbitMQ
-                _publisher.PublishTicket(ticket);
+                await _matchmakingService.QueueUserAsync(userId, gameSettingsId, isRanked);
 
                 // 2. Notify the specific client that they are officially in the queue
                 await Clients.Caller.MatchmakingStarted();
@@ -60,7 +53,7 @@ namespace SC.Api.Hubs
             if (!string.IsNullOrEmpty(userId))
             {
                 // Tell the background worker to drop this user's ticket
-                _publisher.PublishCancelTicket(userId);
+                _matchmakingService.PublishCancelTicket(userId);
                 _logger.LogInformation("User {UserId} disconnected. Ticket cancelled.", userId);
             }
 

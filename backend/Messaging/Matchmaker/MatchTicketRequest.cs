@@ -14,6 +14,8 @@ namespace SC.Messaging.Matchmaker
 
         public bool IsRanked;
 
+        public short? Elo;
+
         public DateTime Timestamp;
     }
 
