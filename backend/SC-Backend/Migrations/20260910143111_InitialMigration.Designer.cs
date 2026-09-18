@@ -12,15 +12,15 @@ using SC_Backend.DataContext;
 namespace SC_Backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260731142648_DodadUserStats")]
-    partial class DodadUserStats
+    [Migration("20260910143111_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.25")
+                .HasAnnotation("ProductVersion", "8.0.30")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -54,7 +54,8 @@ namespace SC_Backend.Migrations
                     b.HasKey("GamesId")
                         .HasName("games_pkey");
 
-                    b.HasIndex("GameSettingsId");
+                    b.HasIndex("GameSettingsId")
+                        .IsUnique();
 
                     b.ToTable("games");
                 });
@@ -142,6 +143,9 @@ namespace SC_Backend.Migrations
 
                     b.HasKey("GameSettingsId")
                         .HasName("game_settings_pkey");
+
+                    b.HasIndex("WinCondition", "Width", "Height", "NumberOfMines")
+                        .HasDatabaseName("IX_game_settings_template_lookup");
 
                     b.ToTable("game_settings", null, t =>
                         {
@@ -303,8 +307,8 @@ namespace SC_Backend.Migrations
             modelBuilder.Entity("SC_Backend.DataModels.Game", b =>
                 {
                     b.HasOne("SC_Backend.DataModels.GameSetting", "GameSettings")
-                        .WithMany()
-                        .HasForeignKey("GameSettingsId")
+                        .WithOne("Game")
+                        .HasForeignKey("SC_Backend.DataModels.Game", "GameSettingsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -365,6 +369,12 @@ namespace SC_Backend.Migrations
                     b.Navigation("GamePlayers");
 
                     b.Navigation("Moves");
+                });
+
+            modelBuilder.Entity("SC_Backend.DataModels.GameSetting", b =>
+                {
+                    b.Navigation("Game")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SC_Backend.DataModels.User", b =>

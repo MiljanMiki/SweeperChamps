@@ -1,0 +1,96 @@
+/* src/components/game/Minesweeper.css */
+.game-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.game-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.game-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.game-button {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.game-button:hover {
+  background: #5a67d8;
+}
+
+.game-status {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #b0b0b0;
+  padding: 4px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.board-row {
+  display: flex;
+}
+
+.cell {
+  width: 40px;
+  height: 40px;
+  margin: 1px;
+  background: #c0c0c0;
+  border: 2px solid #ffffff;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.cell:hover:not(.revealed):not(:disabled) {
+  background: #d0d0d0;
+}
+
+.cell:active:not(.revealed):not(:disabled) {
+  border-color: #808080 #ffffff #ffffff #808080;
+}
+
+.cell.revealed {
+  background: #e0e0e0;
+  border: 1px solid #808080;
+}
+
+.cell.mine {
+  background: #ff4444;
+}
+
+.cell:disabled {
+  cursor: default;
+}

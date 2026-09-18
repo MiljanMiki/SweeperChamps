@@ -8,12 +8,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("SweeperChamps")));
+
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
     ?? throw new ArgumentNullException("JwtSettings:SecretKey is not configured");
@@ -42,7 +42,6 @@ builder.Services.AddAuthentication(options =>
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
-
             var path = context.HttpContext.Request.Path;
             if (!string.IsNullOrEmpty(accessToken) &&
                 path.StartsWithSegments("/chatHub"))
@@ -57,15 +56,21 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddLogging();
+
+// CORS - allow frontend dev ports
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://localhost:5173") // DODAJTE HTTPS
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "http://localhost:3000",
+                "https://localhost:3000"
+              )
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials()
-              .SetIsOriginAllowed((host) => true); // DODAJTE OVO
+              .AllowCredentials();
     });
 });
 
@@ -85,19 +90,19 @@ builder.Services.AddSwaggerGen(c =>
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
+            new OpenApiSecurityScheme
             {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-                },
-                Array.Empty<string>()
-            }
-        });
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -105,6 +110,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowAll");   // ⬅️ THIS WAS MISSING!
 
 app.UseAuthentication();
 app.UseAuthorization();
