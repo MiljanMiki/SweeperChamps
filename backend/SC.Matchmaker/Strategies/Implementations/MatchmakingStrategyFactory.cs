@@ -9,20 +9,12 @@ namespace SC.Matchmaker.Strategies.Implementations
 {
     public class MatchmakingStrategyFactory : IMatchmakingStrategyFactory
     {
-        public IMatchmakingStrategy CreateStrategy(int gameSettingsId, bool isRanked)
+        public IMatchmakingStrategy CreateStrategy(int requiredPlayers, bool isRanked)
         {
-            int requiredPlayers = gameSettingsId switch
-            {
-                1 => 2, // e.g., 1v1
-                2 => 4, // e.g., 2v2
-                _ => 2
-            };
-
             if (isRanked)
             {
                 return new EloMatchmakingStrategy(requiredPlayers, maxEloDifference: 100);
             }
-
             return new OldestTicketStrategy(requiredPlayers);
         }
     }

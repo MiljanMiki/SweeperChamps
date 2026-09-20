@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace SC.Matchmaker.Strategies.Interfaces
 {
-    internal interface IMatchmakingStrategyFactory
+    public interface IMatchmakingStrategyFactory
     {
-        IMatchmakingStrategy CreateStrategy(int gameSettingsId, bool isRanked);
+        IMatchmakingStrategy CreateStrategy(int requiredPlayers, bool isRanked);
     }
 }

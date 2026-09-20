@@ -12,11 +12,13 @@ namespace SC.Matchmaker.Core
     public class MatchmakingEngine
     {
         private readonly TicketPool _ticketPool;
+        private readonly IMatchmakingStrategyFactory _strategyFactory;
         private readonly ILogger<MatchmakingEngine> _logger;
 
-        public MatchmakingEngine(TicketPool ticketPool, ILogger<MatchmakingEngine> logger)
+        public MatchmakingEngine(TicketPool ticketPool, IMatchmakingStrategyFactory factory, ILogger<MatchmakingEngine> logger)
         {
             _ticketPool = ticketPool;
+            _strategyFactory = factory;
             _logger = logger;
         }
 
@@ -38,14 +40,15 @@ namespace SC.Matchmaker.Core
         {
             // Example: Dynamically select strategy based on GameSettingsId
             // In a real app, you might fetch game capacity from a database or config
-            IMatchmakingStrategy strategy = gameSettingsId switch
-            {
-                1 => new OldestTicketStrategy(requiredPlayers: 2), // 1v1 Mode
-                2 => new OldestTicketStrategy(requiredPlayers: 4), // 2v2 Mode
-                _ => new OldestTicketStrategy(requiredPlayers: 2)
-            };
+            
 
             var availableTickets = _ticketPool.GetTicketsInPool(gameSettingsId, isRanked);
+            if (!availableTickets.Any())
+                return;
+
+            int requiredPlayers = availableTickets.First().RequiredPlayers;
+
+            IMatchmakingStrategy strategy = _strategyFactory.CreateStrategy(requiredPlayers,isRanked);
 
             var matchedLobby = strategy.TryMatch(availableTickets);
 

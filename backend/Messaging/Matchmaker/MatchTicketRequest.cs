@@ -14,6 +14,8 @@ namespace SC.Messaging.Matchmaker
 
         public bool IsRanked;
 
+        public int RequiredPlayers;
+
         public short? Elo;
 
         public DateTime Timestamp;

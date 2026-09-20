@@ -21,12 +21,12 @@ namespace SC.Matchmaker.Strategies.Implementations
 
         public List<MatchTicketRequest>? TryMatch(IEnumerable<MatchTicketRequest> tickets)
         {
-            var waitingList = tickets.OrderBy(t => t.Timestamp).ToList();
+            var waitingList = tickets.Where(t => t.IsRanked == true && t.Elo.HasValue).OrderBy(t => t.Timestamp).ToList();
 
             foreach (var anchor in waitingList)
             {
                 var potentialMatch = waitingList
-                    //.Where(t => Math.Abs(t.Elo - anchor.Elo) <= _maxEloDifference)
+                    .Where(t => Math.Abs(t.Elo!.Value - anchor.Elo!.Value) <= _maxEloDifference)
                     .Take(_requiredPlayers)
                     .ToList();
 
