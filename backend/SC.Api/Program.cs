@@ -4,8 +4,11 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SC.Api.Hubs;
 using SC.Api.Services;
+using SC.Api.Services.Implementations;
 using SC.Api.Services.Interfaces;
+using SC.Domain.Repositories.AsyncInterfaces;
 using SC_Backend.DataContext;
+using SC_Backend.Repositories.AsyncImplementations;
 using SC_Backend.Services;
 using System.Text;
 
@@ -60,6 +63,12 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IMatchmakingPublisher, RabbitMqMatchmakingPublisher>();
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IGameSettingRepository, GameSettingRepository>();
+
+builder.Services.AddScoped<IGameSettingsService, GameSettingsService>();
+builder.Services.AddScoped<IMatchmakingService, MatchmakingService>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddLogging();

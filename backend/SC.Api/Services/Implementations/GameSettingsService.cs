@@ -1,8 +1,9 @@
-﻿using SC.Domain.Repositories.AsyncInterfaces;
+﻿using SC.Api.Services.Interfaces;
+using SC.Domain.Repositories.AsyncInterfaces;
 
 namespace SC.Api.Services.Implementations
 {
-    public class GameSettingsService
+    public class GameSettingsService : IGameSettingsService
     {
         private readonly IGameSettingRepository _gameSettingsRepository;
 
