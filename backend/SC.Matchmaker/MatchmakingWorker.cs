@@ -47,11 +47,11 @@ public class MatchmakingWorker : BackgroundService
             autoDelete: false,
             cancellationToken: stoppingToken);
 
-        // 2. Declare and bind the Tickets Queue
-        var ticketsQueue = "matchmaking.tickets.queue";
-        await _channel.QueueDeclareAsync(ticketsQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
-        // Bind to any routing key that starts with "ticket." and has exactly two more words (e.g., ticket.5.ranked)
-        await _channel.QueueBindAsync(ticketsQueue, RabbitMqConstants.MatchmakingExchange, "ticket.*.*", cancellationToken: stoppingToken);
+        var routingKeyPattern = _configuration["WorkerConfig:RoutingKeyPattern"] ?? "ticket.*.casual";
+        var queueName = $"matchmaking.tickets.{_configuration["WorkerConfig:QueueType"] ?? "casual"}.queue";
+
+        await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
+        await _channel.QueueBindAsync(queueName, RabbitMqConstants.MatchmakingExchange, routingKeyPattern, cancellationToken: stoppingToken);
 
         // 3. Declare and bind the Cancellations Queue
         await _channel.QueueDeclareAsync(RabbitMqConstants.TicketCancellationsQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
@@ -65,7 +65,7 @@ public class MatchmakingWorker : BackgroundService
         cancelConsumer.ReceivedAsync += async (sender, ea) => await HandleCancelReceived(ea);
 
         // Start consuming
-        await _channel.BasicConsumeAsync(ticketsQueue, autoAck: false, ticketConsumer, cancellationToken: stoppingToken);
+        await _channel.BasicConsumeAsync(queueName, autoAck: false, ticketConsumer, cancellationToken: stoppingToken);
         await _channel.BasicConsumeAsync(RabbitMqConstants.TicketCancellationsQueue, autoAck: false, cancelConsumer, cancellationToken: stoppingToken);
 
         _logger.LogInformation("Matchmaking Worker started. Waiting for tickets...");

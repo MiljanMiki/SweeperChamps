@@ -12,13 +12,13 @@ namespace SC.Matchmaker.Core
     public class MatchmakingEngine
     {
         private readonly TicketPool _ticketPool;
-        private readonly IMatchmakingStrategyFactory _strategyFactory;
+        private readonly IMatchmakingStrategy _strategy;
         private readonly ILogger<MatchmakingEngine> _logger;
 
-        public MatchmakingEngine(TicketPool ticketPool, IMatchmakingStrategyFactory factory, ILogger<MatchmakingEngine> logger)
+        public MatchmakingEngine(TicketPool ticketPool, IMatchmakingStrategy strategy, ILogger<MatchmakingEngine> logger)
         {
             _ticketPool = ticketPool;
-            _strategyFactory = factory;
+            _strategy = strategy;
             _logger = logger;
         }
 
@@ -48,9 +48,8 @@ namespace SC.Matchmaker.Core
 
             int requiredPlayers = availableTickets.First().RequiredPlayers;
 
-            IMatchmakingStrategy strategy = _strategyFactory.CreateStrategy(requiredPlayers,isRanked);
 
-            var matchedLobby = strategy.TryMatch(availableTickets);
+            var matchedLobby = _strategy.TryMatch(availableTickets);
 
             if (matchedLobby != null)
             {
