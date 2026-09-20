@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SC.Api", "SC.Api\SC.Api.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SC.Domain", "SC.Domain\SC.Domain.csproj", "{CC8B1D5D-B995-4A3A-9968-D2BC077C1377}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SC.Matchmaker", "SC.Matchmaker\SC.Matchmaker.csproj", "{FA27613F-32F2-462C-A2A8-A82927C01755}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SC.Messaging", "Messaging\SC.Messaging.csproj", "{BDA5CCA7-1FAB-496B-BB4B-09166BCE28BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +43,14 @@ Global
 		{CC8B1D5D-B995-4A3A-9968-D2BC077C1377}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CC8B1D5D-B995-4A3A-9968-D2BC077C1377}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CC8B1D5D-B995-4A3A-9968-D2BC077C1377}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA27613F-32F2-462C-A2A8-A82927C01755}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA27613F-32F2-462C-A2A8-A82927C01755}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA27613F-32F2-462C-A2A8-A82927C01755}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA27613F-32F2-462C-A2A8-A82927C01755}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDA5CCA7-1FAB-496B-BB4B-09166BCE28BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDA5CCA7-1FAB-496B-BB4B-09166BCE28BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDA5CCA7-1FAB-496B-BB4B-09166BCE28BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDA5CCA7-1FAB-496B-BB4B-09166BCE28BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
