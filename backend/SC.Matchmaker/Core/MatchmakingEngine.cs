@@ -31,12 +31,12 @@ namespace SC.Matchmaker.Core
             _logger = logger;
         }
 
-        public void ProcessNewTicket(MatchTicketRequest ticket)
+        public async Task ProcessNewTicket(MatchTicketRequest ticket)
         {
             _ticketPool.AddTicket(ticket);
             _logger.LogInformation("Added User {UserId} to pool.", ticket.UserId);
 
-            TryFormMatch(ticket.GameSettingsId, ticket.IsRanked);
+            await TryFormMatchAsync(ticket.GameSettingsId, ticket.IsRanked);
         }
 
         public void CancelTicket(string userId)
@@ -45,7 +45,7 @@ namespace SC.Matchmaker.Core
             _logger.LogInformation("Removed User {UserId} from pool.", userId);
         }
 
-        private async void TryFormMatchAsync(int gameSettingsId, bool isRanked)
+        private async Task TryFormMatchAsync(int gameSettingsId, bool isRanked)
         {
             // Example: Dynamically select strategy based on GameSettingsId
             // In a real app, you might fetch game capacity from a database or config
@@ -77,6 +77,10 @@ namespace SC.Matchmaker.Core
                 _resultsPublisher.Publish(matchEvent);
 
                 _logger.LogInformation("MATCH FOUND! Players: {Players}", string.Join(", ", matchedUserIds));
+            }
+            catch(Exception e)
+            {
+                _logger.LogError(e,e.Message);
             }
 
         }

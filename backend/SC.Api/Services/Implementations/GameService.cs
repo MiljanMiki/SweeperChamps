@@ -67,6 +67,7 @@ namespace SC.Api.Services.Implementations
                 };
 
                 playerList.Add(gp);
+                _gamePlayerRepository.Add(gp);
 
                 ++counter;
             }
@@ -75,14 +76,23 @@ namespace SC.Api.Services.Implementations
             _gameRepository.Update(game);
 
 
+            //saves context on GP too
             await _gameRepository.SaveChangesAsync();
 
             return gameId;
         }
 
-        public async Task MarkGameFinished()
+        public async Task MarkGameFinished(int gameId, int durationSeconds, TeamColors winningTeam)
         {
-            throw new NotImplementedException();
+            if(gameId <= 0 )
+                throw new ArgumentException($"{nameof(GameSetting)} ID cannot be negative or 0!");
+            if (durationSeconds < 0)
+                throw new ArgumentException("Duration cannot be negative!");
+            
+            await _gameRepository.MarkGameAsFinishedAsync(gameId, durationSeconds, winningTeam);
+
+
+            await _gameRepository.SaveChangesAsync();
         }
     }
 }

@@ -16,5 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Messaging\SC.Messaging.csproj" />
+    <ProjectReference Include="..\SC.Api\SC.Api.csproj" />
   </ItemGroup>
 </Project>
