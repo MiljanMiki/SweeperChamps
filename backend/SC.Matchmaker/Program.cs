@@ -2,8 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SC.Matchmaker;
 using SC.Matchmaker.Core;
+using SC.Matchmaker.Services.Interfaces;
 using SC.Matchmaker.Strategies.Implementations;
 using SC.Matchmaker.Strategies.Interfaces;
+using SC_Backend.Matchmaker.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -22,6 +24,7 @@ else
 }
 
 builder.Services.AddSingleton<IMatchmakingStrategyFactory, MatchmakingStrategyFactory>();
+builder.Services.AddSingleton<IMatchFoundPublisher, RabbitMqResultsPublisher>();
 
 builder.Services.AddSingleton<TicketPool>();
 builder.Services.AddSingleton<MatchmakingEngine>();

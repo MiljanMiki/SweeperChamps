@@ -1,11 +1,14 @@
-﻿using SC.Matchmaker.Strategies.Implementations;
+﻿using SC.Matchmaker.Services.Interfaces;
+using SC.Matchmaker.Strategies.Implementations;
 using SC.Matchmaker.Strategies.Interfaces;
 using SC.Messaging.Matchmaker;
+using SC.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SC.Api.Services.Interfaces;
 
 namespace SC.Matchmaker.Core
 {
@@ -13,11 +16,17 @@ namespace SC.Matchmaker.Core
     {
         private readonly TicketPool _ticketPool;
         private readonly IMatchmakingStrategy _strategy;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IMatchFoundPublisher _resultsPublisher;
         private readonly ILogger<MatchmakingEngine> _logger;
 
-        public MatchmakingEngine(TicketPool ticketPool, IMatchmakingStrategy strategy, ILogger<MatchmakingEngine> logger)
+        public MatchmakingEngine(TicketPool ticketPool, IMatchmakingStrategy strategy,
+            IServiceScopeFactory scopeFactory,
+            IMatchFoundPublisher resultsPublisher, ILogger<MatchmakingEngine> logger)
         {
             _ticketPool = ticketPool;
+            _resultsPublisher = resultsPublisher;
+            _scopeFactory = scopeFactory;
             _strategy = strategy;
             _logger = logger;
         }
@@ -36,11 +45,10 @@ namespace SC.Matchmaker.Core
             _logger.LogInformation("Removed User {UserId} from pool.", userId);
         }
 
-        private void TryFormMatch(int gameSettingsId, bool isRanked)
+        private async void TryFormMatchAsync(int gameSettingsId, bool isRanked)
         {
             // Example: Dynamically select strategy based on GameSettingsId
             // In a real app, you might fetch game capacity from a database or config
-            
 
             var availableTickets = _ticketPool.GetTicketsInPool(gameSettingsId, isRanked);
             if (!availableTickets.Any())
@@ -51,17 +59,26 @@ namespace SC.Matchmaker.Core
 
             var matchedLobby = _strategy.TryMatch(availableTickets);
 
-            if (matchedLobby != null)
+            if (matchedLobby == null) return;
+
+            try
             {
                 var matchedUserIds = matchedLobby.Select(t => t.UserId).ToList();
 
                 // Atomically remove players from the pool so they aren't matched twice
                 _ticketPool.RemoveTickets(matchedUserIds);
 
-                _logger.LogInformation("MATCH FOUND! Players: {Players}", string.Join(", ", matchedUserIds));
+                using var scope = _scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IGameService>();
+                int newGameId = await service.CreateGame(gameSettingsId, matchedUserIds, isRanked);
 
-                // TODO in Phase 5: Publish MatchFoundEvent back to RabbitMQ for the API
+                // 2. Publish to RabbitMQ
+                var matchEvent = new MatchFoundEvent { GameId = newGameId, UserIds = matchedUserIds };
+                _resultsPublisher.Publish(matchEvent);
+
+                _logger.LogInformation("MATCH FOUND! Players: {Players}", string.Join(", ", matchedUserIds));
             }
+
         }
     }
 }

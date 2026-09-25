@@ -90,6 +90,7 @@ namespace SC_Backend.Repositories.AsyncImplementations
                     .Where(g => g.GamesId == gameId)
                     .ExecuteUpdateAsync(s => s
                     .SetProperty(g => g.EndTime, DateTime.UtcNow)
+                    .SetProperty(g => g.Status, GameStatuses.Finished)
                     .SetProperty(g => g.DurationSeconds, durationSeconds)
                     .SetProperty(g => g.WinningTeam, winningTeam));
         }
