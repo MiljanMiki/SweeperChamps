@@ -1,6 +1,7 @@
 ﻿using Humanizer;
 using SC.Api.Services.Interfaces;
 using SC.Domain.DataModels;
+using SC.Domain.DTOs.Service;
 using SC.Domain.Repositories.AsyncInterfaces;
 
 namespace SC.Api.Services.Implementations
@@ -82,14 +83,25 @@ namespace SC.Api.Services.Implementations
             return gameId;
         }
 
-        public async Task MarkGameFinished(int gameId, int durationSeconds, TeamColors winningTeam)
+        public async Task MarkGameFinished(int gameId, int durationSeconds, TeamColors winningTeam, List<GameFinishedPlayerStats> playerUpdateStats)
         {
             if(gameId <= 0 )
                 throw new ArgumentException($"{nameof(GameSetting)} ID cannot be negative or 0!");
             if (durationSeconds < 0)
                 throw new ArgumentException("Duration cannot be negative!");
-            
+
+            var game = await _gameRepository.GetAsync(gameId);
+            if(game == null)
+                throw new KeyNotFoundException($"Invalid {nameof(Game)} ID: {gameId}. It does not map to any row");
+
+            if (playerUpdateStats.Count != game.GamePlayers.Count)
+                throw new ArgumentException($"All players must be updated after finished game. " +
+                    $"Count of game players:{game.GamePlayers.Count}. " +
+                    $"Passed list of game player updates count: {playerUpdateStats.Count}");
+
             await _gameRepository.MarkGameAsFinishedAsync(gameId, durationSeconds, winningTeam);
+
+            var players = await _gamePlayerRepository.GetAllPlayersFromGameAsync(gameId);
 
 
             await _gameRepository.SaveChangesAsync();
