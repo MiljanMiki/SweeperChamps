@@ -69,6 +69,9 @@ builder.Services.AddScoped<IGameSettingRepository, GameSettingRepository>();
 builder.Services.AddScoped<IGameSettingsService, GameSettingsService>();
 builder.Services.AddScoped<IMatchmakingService, MatchmakingService>();
 
+builder.Services.AddHostedService<MatchmakingResultsConsumer>();
+
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddLogging();
 

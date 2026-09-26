@@ -1,0 +1,110 @@
+﻿using Humanizer;
+using SC.Api.Services.Interfaces;
+using SC.Domain.DataModels;
+using SC.Domain.DTOs.Service;
+using SC.Domain.Repositories.AsyncInterfaces;
+
+namespace SC.Api.Services.Implementations
+{
+    public class GameService : IGameService
+    {
+        private readonly IGameRepository _gameRepository;
+        private readonly IGameSettingRepository _gameSettingRepository;
+        private readonly IGamePlayerRepository _gamePlayerRepository;
+
+        public GameService(IGameRepository gameRepository,IGameSettingRepository gameSettingRepository ,IGamePlayerRepository gamePlayerRepository)
+        {
+            _gameRepository = gameRepository;
+            _gameSettingRepository = gameSettingRepository;
+            _gamePlayerRepository = gamePlayerRepository;
+        }
+
+        
+
+        public async Task<int> CreateGame(int gameSettingId, List<string> players, bool isRanked)
+        {
+            if (gameSettingId <= 0)
+                throw new ArgumentException($"{nameof(GameSetting)} ID cannot be negative or 0!");
+            if (players.Count == 0)
+                throw new ArgumentException("Player count is 0!");
+            if (players.Count % 2 != 0)
+                throw new ArgumentException("Player count must be a multiple of 2!");
+
+            var setting = await _gameSettingRepository.GetAsync(gameSettingId);
+            if (setting == null)
+                throw new KeyNotFoundException($"Invalid {nameof(GameSetting)} ID: {gameSettingId}. It does not map to any row");
+
+
+            Game game = new Game
+            {
+                StartTime = DateTime.Now,
+                EndTime = null,
+                Status = GameStatuses.InProgress,
+                IsRanked = isRanked,
+                DurationSeconds = null,
+                WinningTeam = null,
+                GameSettingsId = gameSettingId,
+            };
+
+            _gameRepository.Add(game);
+
+            await _gameRepository.SaveChangesAsync();
+
+            var gameId = game.GamesId;
+
+            int counter = 0;
+            List<GamePlayer> playerList = new List<GamePlayer>();
+            foreach(var player in players)
+            {
+                GamePlayer gp = new GamePlayer
+                {
+                    GameId = gameId,
+                    PlayerId = Int32.Parse(player),
+                    Score = 0,
+                    TeamColor = counter % 2 == 0 ? TeamColors.Red : TeamColors.Blue,
+                    Outcome = Outcomes.Pending,
+                    EloChange = null,
+                    Accuracy = 0
+                };
+
+                playerList.Add(gp);
+                _gamePlayerRepository.Add(gp);
+
+                ++counter;
+            }
+
+            game.GamePlayers = playerList;
+            _gameRepository.Update(game);
+
+
+            //saves context on GP too
+            await _gameRepository.SaveChangesAsync();
+
+            return gameId;
+        }
+
+        public async Task MarkGameFinished(int gameId, int durationSeconds, TeamColors winningTeam, List<GameFinishedPlayerStats> playerUpdateStats)
+        {
+            if(gameId <= 0 )
+                throw new ArgumentException($"{nameof(GameSetting)} ID cannot be negative or 0!");
+            if (durationSeconds < 0)
+                throw new ArgumentException("Duration cannot be negative!");
+
+            var game = await _gameRepository.GetAsync(gameId);
+            if(game == null)
+                throw new KeyNotFoundException($"Invalid {nameof(Game)} ID: {gameId}. It does not map to any row");
+
+            if (playerUpdateStats.Count != game.GamePlayers.Count)
+                throw new ArgumentException($"All players must be updated after finished game. " +
+                    $"Count of game players:{game.GamePlayers.Count}. " +
+                    $"Passed list of game player updates count: {playerUpdateStats.Count}");
+
+            await _gameRepository.MarkGameAsFinishedAsync(gameId, durationSeconds, winningTeam);
+
+            var players = await _gamePlayerRepository.GetAllPlayersFromGameAsync(gameId);
+
+
+            await _gameRepository.SaveChangesAsync();
+        }
+    }
+}

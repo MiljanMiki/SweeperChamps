@@ -109,8 +109,8 @@ namespace SC_Backend.Tests.Controllers
             // Assert
             Assert.That(result, Is.InstanceOf<NoContentResult>());
             var updatedDbEntity = await _context.GamePlayers.FindAsync(1);
-            Assert.That(updatedDbEntity.Score, Is.EqualTo(250));
-            Assert.That(updatedDbEntity.TeamColor, Is.EqualTo(TeamColors.Blue));
+            Assert.That(updatedDbEntity!.Score, Is.EqualTo(250));
+            Assert.That(updatedDbEntity!.TeamColor, Is.EqualTo(TeamColors.Blue));
         }
 
         [Test]

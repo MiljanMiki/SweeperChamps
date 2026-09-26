@@ -19,7 +19,6 @@ namespace SC_Backend.Tests.Repositories
     {
         private ApplicationDbContext _context;
         private GameRepository _repository;
-        private IAuthService _authService;
 
         [SetUp]
         public void Setup()

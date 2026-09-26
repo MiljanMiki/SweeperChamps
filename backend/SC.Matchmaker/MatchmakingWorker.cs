@@ -90,8 +90,7 @@ public class MatchmakingWorker : BackgroundService
                 _logger.LogInformation("Received Ticket: User {UserId}, Settings {SettingsId}, Ranked: {IsRanked}",
                     ticket.UserId, ticket.GameSettingsId, ticket.IsRanked);
 
-                // TODO in Phase 4: Add ticket to in-memory pool
-                _engine.ProcessNewTicket(ticket);
+                await _engine.ProcessNewTicket(ticket);
             }
 
             // Acknowledge the message so RabbitMQ removes it from the queue

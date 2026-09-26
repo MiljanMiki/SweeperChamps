@@ -332,7 +332,7 @@ namespace SC.Api.Controllers
             {
                 return await _userStatsRepository.GetStatAsync(playerID, gameSettingID, isRanked) != null;
             }
-            catch(KeyNotFoundException e)
+            catch(KeyNotFoundException)
             {
                 throw;
             }
