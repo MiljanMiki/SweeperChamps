@@ -96,7 +96,7 @@ namespace SC_Backend.Tests.Controllers
 
             Assert.That(result, Is.InstanceOf<NoContentResult>());
             var updatedEntity = await _context.Games.FindAsync(1);
-            Assert.That(updatedEntity.EndTime, Is.EqualTo(new DateTime(2026, 8, 1, 11, 0, 0)));
+            Assert.That(updatedEntity!.EndTime, Is.EqualTo(new DateTime(2026, 8, 1, 11, 0, 0)));
         }
 
         [Test]

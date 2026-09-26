@@ -72,7 +72,7 @@ namespace SC.Matchmaker.Core
                 var service = scope.ServiceProvider.GetRequiredService<IGameService>();
                 int newGameId = await service.CreateGame(gameSettingsId, matchedUserIds, isRanked);
 
-                // 2. Publish to RabbitMQ
+                //Publish to RabbitMQ
                 var matchEvent = new MatchFoundEvent { GameId = newGameId, UserIds = matchedUserIds };
                 _resultsPublisher.Publish(matchEvent);
 
