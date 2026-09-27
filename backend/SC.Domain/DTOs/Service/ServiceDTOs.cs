@@ -8,7 +8,11 @@ using System.Threading.Tasks;
 
 namespace SC.Domain.DTOs.Service
 {
-    public record GameFinishedPlayerStats
+    public record MarkGameFinishedDto(int gameId, int durationSeconds, TeamColors winningTeam)
+    {
+
+    }
+    public record GameFinishedPlayerStatsDto
     {
         public int GamePlayerId { get; set; }
         public int Score { get; set; }
@@ -16,4 +20,15 @@ namespace SC.Domain.DTOs.Service
         public short? EloChange { get; set; }
         public double Accuracy { get; set; }
     }
+
+    public record UpdatePlayerStatsDto(int GameSettingId,
+        int UserId, bool isRanked, bool isWin,long gameDuration)
+    {
+    }
+
+    public record GameResultDto(MarkGameFinishedDto gameDto, List<GameFinishedPlayerStatsDto> playerDto,
+                            List<UpdatePlayerStatsDto> statsDto)
+    { }
+
+
 }

@@ -18,9 +18,6 @@ namespace SC.Api.Services.Implementations
             _gameSettingRepository = gameSettingRepository;
             _gamePlayerRepository = gamePlayerRepository;
         }
-
-        
-
         public async Task<int> CreateGame(int gameSettingId, List<string> players, bool isRanked)
         {
             if (gameSettingId <= 0)
@@ -83,25 +80,21 @@ namespace SC.Api.Services.Implementations
             return gameId;
         }
 
-        public async Task MarkGameFinished(int gameId, int durationSeconds, TeamColors winningTeam, List<GameFinishedPlayerStats> playerUpdateStats)
+        public async Task MarkGameFinished(MarkGameFinishedDto dto)
         {
-            if(gameId <= 0 )
+            ArgumentNullException.ThrowIfNull(dto);
+
+            if(dto.gameId <= 0 )
                 throw new ArgumentException($"{nameof(GameSetting)} ID cannot be negative or 0!");
-            if (durationSeconds < 0)
+            if (dto.durationSeconds < 0)
                 throw new ArgumentException("Duration cannot be negative!");
 
-            var game = await _gameRepository.GetAsync(gameId);
+            var game = await _gameRepository.GetAsync(dto.gameId);
             if(game == null)
-                throw new KeyNotFoundException($"Invalid {nameof(Game)} ID: {gameId}. It does not map to any row");
+                throw new KeyNotFoundException($"Invalid {nameof(Game)} ID: {dto.gameId}. It does not map to any row");
 
-            if (playerUpdateStats.Count != game.GamePlayers.Count)
-                throw new ArgumentException($"All players must be updated after finished game. " +
-                    $"Count of game players:{game.GamePlayers.Count}. " +
-                    $"Passed list of game player updates count: {playerUpdateStats.Count}");
 
-            await _gameRepository.MarkGameAsFinishedAsync(gameId, durationSeconds, winningTeam);
-
-            var players = await _gamePlayerRepository.GetAllPlayersFromGameAsync(gameId);
+            await _gameRepository.MarkGameAsFinishedAsync(dto.gameId, dto.durationSeconds, dto.winningTeam);
 
 
             await _gameRepository.SaveChangesAsync();

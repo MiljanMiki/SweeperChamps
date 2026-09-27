@@ -1,4 +1,5 @@
 ﻿using SC.Domain.DataModels;
+using SC.Domain.DTOs.Service;
 
 namespace SC.Api.Services.Interfaces
 {
@@ -7,6 +8,6 @@ namespace SC.Api.Services.Interfaces
         Task<int> CreateGame(int gameSettingId, List<string> players, bool isRanked);
 
         //TODO: Also add information about game players, and add moves
-        Task MarkGameFinished(int gameId, int durationSeconds, TeamColors winningTeam);
+        Task MarkGameFinished(MarkGameFinishedDto dto);
     }
 }

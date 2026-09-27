@@ -14,7 +14,8 @@ namespace SC_Backend.Repositories.AsyncImplementations
 
         public override Task<UserStats?> GetAsync(int id)
         {
-            throw new NotImplementedException("This function cannot be implemented because of incompatible keys");
+            throw new NotImplementedException($"This function cannot be implemented because of incompatible keys." +
+                $"Use {nameof(GetStatAsync)} instead.");
         }
         public override void Add(UserStats entity)
         {
