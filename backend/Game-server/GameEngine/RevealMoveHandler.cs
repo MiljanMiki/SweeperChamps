@@ -17,6 +17,7 @@ public class RevealMoveHandler : IMoveHandler
         if (cell.IsMine)
         {
             cell.State = CellState.Revealed;
+            cell.RevealedByPlayerId = playerId;
             state.ResolvedCellCount++;
             player.Score -= 50;
 
@@ -29,7 +30,7 @@ public class RevealMoveHandler : IMoveHandler
             };
         }
 
-        var revealed = state.Board.RevealWithCascade(move.X, move.Y);
+        var revealed = state.Board.RevealWithCascade(move.X, move.Y, playerId);
         state.ResolvedCellCount += revealed.Count;
         player.Score += revealed.Count;
 

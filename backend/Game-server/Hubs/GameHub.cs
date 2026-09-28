@@ -10,11 +10,11 @@ namespace SC_GameServer.Hubs;
 [Authorize]
 public class GameHub : Hub
 {
-    private readonly IGameStateManager    _gameStateManager;
-    private readonly IGameEngine          _gameEngine;
-    private readonly IRabbitMqPublisher   _publisher;
-    private readonly GameResultProcessor  _resultProcessor;
-    private readonly ILogger<GameHub>     _logger;
+    private readonly IGameStateManager _gameStateManager;
+    private readonly IGameEngine _gameEngine;
+    private readonly IRabbitMqPublisher _publisher;
+    private readonly GameResultProcessor _resultProcessor;
+    private readonly ILogger<GameHub> _logger;
 
     public GameHub(
         IGameStateManager gameStateManager,
@@ -24,45 +24,54 @@ public class GameHub : Hub
         ILogger<GameHub> logger)
     {
         _gameStateManager = gameStateManager;
-        _gameEngine       = gameEngine;
-        _publisher        = publisher;
-        _resultProcessor  = resultProcessor;
-        _logger           = logger;
+        _gameEngine = gameEngine;
+        _publisher = publisher;
+        _resultProcessor = resultProcessor;
+        _logger = logger;
     }
 
     private int CurrentPlayerId =>
         int.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? throw new HubException("Missing player id claim"));
 
-    public async Task JoinGame(int gameId)
+    /// <summary>
+    /// Client calls this once after connecting. Server finds the caller's active game,
+    /// joins them to its group, and sends them the full board state.
+    /// </summary>
+    public async Task JoinGame()
     {
-        if (!_gameStateManager.TryGetGame(gameId, out var game) || game is null)
-            throw new HubException("Game not found or not active");
-
         var playerId = CurrentPlayerId;
 
-        if (!game.Players.Any(p => p.PlayerId == playerId))
-            throw new HubException("Player is not part of this game");
+        if (!_gameStateManager.TryGetGameForPlayer(playerId, out var game) || game is null)
+        {
+            await Clients.Caller.SendAsync(HubEvents.MoveRejected, "You are not in an active game.");
+            return;
+        }
 
         game.Connections[playerId] = Context.ConnectionId;
         await Groups.AddToGroupAsync(Context.ConnectionId, game.GroupName);
+
+        // Send the full snapshot to the caller
+        var snapshot = BuildSnapshot(game);
+        await Clients.Caller.SendAsync(HubEvents.BoardState, snapshot);
+
+        // Tell others in the group that this player connected (or reconnected)
         await Clients.OthersInGroup(game.GroupName).SendAsync(HubEvents.PlayerConnected, playerId);
+
+        _logger.LogInformation("Player {PlayerId} joined game {GameId}", playerId, game.GameId);
     }
 
-    public async Task MakeMove(int gameId, MoveRequest move)
+    public async Task MakeMove(MoveRequest move)
     {
-        if (!_gameStateManager.TryGetGame(gameId, out var game) || game is null)
-            throw new HubException("Game not found or not active");
-
         var playerId = CurrentPlayerId;
 
-        if (!game.Players.Any(p => p.PlayerId == playerId))
-            throw new HubException("Player is not part of this game");
+        if (!_gameStateManager.TryGetGameForPlayer(playerId, out var game) || game is null)
+            throw new HubException("You are not in an active game");
 
         if (game.IsFinished)
             throw new HubException("Game has already ended");
 
-        var result = _gameEngine.ApplyMove(gameId, playerId, move);
+        var result = _gameEngine.ApplyMove(game.GameId, playerId, move);
 
         if (!result.IsValid)
         {
@@ -78,9 +87,9 @@ public class GameHub : Hub
 
         await _publisher.PublishMoveMadeAsync(new MoveMadeMessage
         {
-            GameId      = gameId,
-            PlayerId    = playerId,
-            Timestamp   = DateTime.UtcNow,
+            GameId = game.GameId,
+            PlayerId = playerId,
+            Timestamp = DateTime.UtcNow,
             MoveLogJson = result.MoveLogJson
         });
 
@@ -92,25 +101,57 @@ public class GameHub : Hub
 
             await _publisher.PublishGameFinishedAsync(new GameFinishedMessage
             {
-                GameId  = gameId,
+                GameId = game.GameId,
                 EndTime = DateTime.UtcNow,
-                Status  = GameStatus.Finished,
+                Status = GameStatus.Finished,
                 Results = result.FinalResults ?? new()
             });
 
-            _gameStateManager.RemoveGame(gameId);
+            _gameStateManager.RemoveGame(game.GameId);
         }
         else if (result.NextPlayerId.HasValue && result.NextMoveDeadlineSeconds.HasValue)
         {
-            await Clients.Group(game.GroupName)
-                .SendAsync(HubEvents.TurnChanged, result.NextPlayerId);
-
+            await Clients.Group(game.GroupName).SendAsync(HubEvents.TurnChanged, result.NextPlayerId);
             _resultProcessor.ScheduleTurnTimeout(game, result.NextPlayerId.Value, result.NextMoveDeadlineSeconds.Value);
         }
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        try
+        {
+            var playerId = CurrentPlayerId;
+            if (_gameStateManager.TryGetGameForPlayer(playerId, out var game) && game is not null)
+            {
+                game.Connections.TryRemove(playerId, out _);
+                _logger.LogInformation("Player {PlayerId} disconnected from game {GameId}", playerId, game.GameId);
+            }
+        }
+        catch { /* user was never authenticated; ignore */ }
+
         await base.OnDisconnectedAsync(exception);
+    }
+
+    private static BoardStateSnapshot BuildSnapshot(Models.GameInstance game)
+    {
+        var state = (MinesweeperGameState)game.BoardState;
+
+        int? currentTurn = null;
+        if (game.Settings.WinCondition == WinCondition.TimeRush)
+        {
+            var active = state.Players.Where(p => !p.IsEliminated).ToList();
+            if (active.Count > 0)
+                currentTurn = active[state.CurrentTurnPlayerIndex % active.Count].PlayerId;
+        }
+
+        return new BoardStateSnapshot
+        {
+            GameId = game.GameId,
+            Settings = game.Settings,
+            Players = game.Players,
+            Cells = state.Board.ToSnapshot(),
+            CurrentTurnPlayerId = currentTurn,
+            IsGameOver = game.IsFinished,
+        };
     }
 }

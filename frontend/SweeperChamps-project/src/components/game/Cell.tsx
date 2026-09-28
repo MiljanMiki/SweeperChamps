@@ -1,4 +1,3 @@
-// src/components/game/Cell.tsx
 import React from "react";
 import type { CellView } from "../../types/game";
 
@@ -11,9 +10,7 @@ interface CellProps {
 const Cell: React.FC<CellProps> = ({ cell, onReveal, onFlag }) => {
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (cell.state !== "Revealed") {
-      onFlag(cell.x, cell.y);
-    }
+    if (cell.state !== "Revealed") onFlag(cell.x, cell.y);
   };
 
   if (cell.state === "Hidden") {
@@ -22,6 +19,7 @@ const Cell: React.FC<CellProps> = ({ cell, onReveal, onFlag }) => {
         className="cell cell--hidden"
         onClick={() => onReveal(cell.x, cell.y)}
         onContextMenu={handleContextMenu}
+        aria-label={`Cell ${cell.x},${cell.y}`}
       />
     );
   }
@@ -30,6 +28,7 @@ const Cell: React.FC<CellProps> = ({ cell, onReveal, onFlag }) => {
     return (
       <button
         className="cell cell--flagged"
+        onClick={() => onFlag(cell.x, cell.y)}
         onContextMenu={handleContextMenu}
       >
         🚩
@@ -37,22 +36,13 @@ const Cell: React.FC<CellProps> = ({ cell, onReveal, onFlag }) => {
     );
   }
 
-  // Revealed
-  const teamClass = cell.revealedBy
-    ? `cell--${cell.revealedBy.toLowerCase()}`
-    : "";
-
   return (
-    <div
-      className={`cell cell--revealed ${teamClass} ${cell.isMine ? "cell--mine" : ""}`}
-    >
-      {cell.isMine ? (
-        "💣"
-      ) : cell.adjacentMineCount > 0 ? (
-        <span className={`num num--${cell.adjacentMineCount}`}>
-          {cell.adjacentMineCount}
-        </span>
-      ) : null}
+    <div className={`cell cell--revealed ${cell.isMine ? "cell--mine" : ""}`}>
+      {cell.isMine
+        ? "💣"
+        : cell.adjacentMineCount > 0
+        ? <span className={`num num--${cell.adjacentMineCount}`}>{cell.adjacentMineCount}</span>
+        : null}
     </div>
   );
 };

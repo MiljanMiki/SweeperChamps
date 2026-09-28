@@ -6,11 +6,37 @@ using SC_GameServer.Hubs;
 using SC_GameServer.Messaging;
 using SC_GameServer.Services;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ---- CORS ----
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "http://localhost:3000",
+                "https://localhost:3000"
+              )
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 // ---- SignalR ----
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
+    });
 
 // ---- Auth ----
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -20,9 +46,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer           = false,
-            ValidateAudience         = false
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateIssuer = false,
+            ValidateAudience = false
         };
 
         options.Events = new JwtBearerEvents
@@ -45,12 +71,12 @@ builder.Services.AddAuthorization();
 // ---- RabbitMQ ----
 builder.Services.AddSingleton<IConnection>(sp =>
 {
-    var config  = sp.GetRequiredService<IConfiguration>();
+    var config = sp.GetRequiredService<IConfiguration>();
     var factory = new ConnectionFactory
     {
-        HostName = config["RabbitMq:Host"]     ?? "localhost",
-        Port     = int.Parse(config["RabbitMq:Port"] ?? "5672"),
-        UserName = config["RabbitMq:User"]     ?? "guest",
+        HostName = config["RabbitMq:Host"] ?? "localhost",
+        Port = int.Parse(config["RabbitMq:Port"] ?? "5672"),
+        UserName = config["RabbitMq:User"] ?? "guest",
         Password = config["RabbitMq:Password"] ?? "guest"
     };
     return factory.CreateConnectionAsync().GetAwaiter().GetResult();
@@ -65,6 +91,8 @@ builder.Services.AddSingleton<IGameEngine, MinesweeperGameEngine>();
 builder.Services.AddSingleton<GameResultProcessor>();
 
 var app = builder.Build();
+
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

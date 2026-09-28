@@ -1,74 +1,43 @@
-// src/components/lobby/Lobby.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { gamesService } from "../../services/gameService";
+import { useAuth } from "../../context/AuthContext";
+import { useMatchmaking } from "../../hooks/useMatchmaking";
 import "./Lobby.css";
 
+const GAME_SETTINGS_ID = 6; // ⚠️ your existing settings row
+const IS_RANKED = false;
+
 const Lobby: React.FC = () => {
-  const [searching, setSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const pollRef = useRef<number | null>(null);
+  const token = localStorage.getItem("token") || "";
 
-  const stopPolling = () => {
-    if (pollRef.current !== null) {
-      window.clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  };
+  const handleMatchFound = useCallback(() => {
+    navigate("/game");
+  }, [navigate]);
 
-  useEffect(() => {
-    return () => stopPolling();
-  }, []);
-
-  const handleFindMatch = async () => {
-    setError(null);
-    setSearching(true);
-    try {
-      await gamesService.findMatch();
-
-      // Start polling every 2s
-      pollRef.current = window.setInterval(async () => {
-        const pending = await gamesService.getPendingGame();
-        if (pending) {
-          stopPolling();
-          setSearching(false);
-          navigate(`/game/${pending.gameId}`);
-        }
-      }, 2000);
-    } catch (err) {
-      setSearching(false);
-      setError(err instanceof Error ? err.message : "Failed to find match");
-    }
-  };
-
-  const handleCancel = async () => {
-    stopPolling();
-    setSearching(false);
-    try {
-      await gamesService.cancelMatch();
-    } catch {
-      // Ignore cancel errors
-    }
-  };
+  const { state, searching, error, requestMatch, cancel } = useMatchmaking(token, handleMatchFound);
 
   return (
     <div className="lobby">
       <h1>Minesweeper Lobby</h1>
-
+      <div className={`lobby__connection lobby__connection--${state}`}>
+        {state === "connected" && "🟢 Connected"}
+        {state === "connecting" && "🟡 Connecting…"}
+        {state === "disconnected" && "🔴 Disconnected"}
+      </div>
+      <p>Welcome, {user?.username}</p>
       {error && <div className="lobby__error">{error}</div>}
 
       {!searching ? (
-        <button className="lobby__button" onClick={handleFindMatch}>
+        <button className="lobby__button" onClick={() => requestMatch(GAME_SETTINGS_ID, IS_RANKED)} disabled={state !== "connected"}>
           🎮 Find Match
         </button>
       ) : (
         <div className="lobby__searching">
           <div className="spinner" />
           <p>Searching for opponent…</p>
-          <button className="lobby__cancel" onClick={handleCancel}>
-            Cancel
-          </button>
+          <button className="lobby__cancel" onClick={cancel}>Cancel</button>
         </div>
       )}
     </div>

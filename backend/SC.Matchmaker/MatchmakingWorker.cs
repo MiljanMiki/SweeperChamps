@@ -19,7 +19,15 @@ public class MatchmakingWorker : BackgroundService
     private IConnection? _connection;
     private IChannel? _channel;
 
-    public MatchmakingWorker(IConfiguration configuration, ILogger<MatchmakingWorker> logger, MatchmakingEngine engine)
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        IncludeFields = true
+    };
+
+    public MatchmakingWorker(
+        IConfiguration configuration,
+        ILogger<MatchmakingWorker> logger,
+        MatchmakingEngine engine)
     {
         _configuration = configuration;
         _logger = logger;
@@ -39,7 +47,6 @@ public class MatchmakingWorker : BackgroundService
         _connection = await factory.CreateConnectionAsync(stoppingToken);
         _channel = await _connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
-        // 1. Ensure exchange exists (matching the API project)
         await _channel.ExchangeDeclareAsync(
             exchange: RabbitMqConstants.MatchmakingExchange,
             type: ExchangeType.Topic,
@@ -53,24 +60,20 @@ public class MatchmakingWorker : BackgroundService
         await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
         await _channel.QueueBindAsync(queueName, RabbitMqConstants.MatchmakingExchange, routingKeyPattern, cancellationToken: stoppingToken);
 
-        // 3. Declare and bind the Cancellations Queue
         await _channel.QueueDeclareAsync(RabbitMqConstants.TicketCancellationsQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
         await _channel.QueueBindAsync(RabbitMqConstants.TicketCancellationsQueue, RabbitMqConstants.MatchmakingExchange, "ticket.cancel", cancellationToken: stoppingToken);
 
-        // 4. Setup Consumers
         var ticketConsumer = new AsyncEventingBasicConsumer(_channel);
         ticketConsumer.ReceivedAsync += async (sender, ea) => await HandleTicketReceived(ea);
 
         var cancelConsumer = new AsyncEventingBasicConsumer(_channel);
         cancelConsumer.ReceivedAsync += async (sender, ea) => await HandleCancelReceived(ea);
 
-        // Start consuming
         await _channel.BasicConsumeAsync(queueName, autoAck: false, ticketConsumer, cancellationToken: stoppingToken);
         await _channel.BasicConsumeAsync(RabbitMqConstants.TicketCancellationsQueue, autoAck: false, cancelConsumer, cancellationToken: stoppingToken);
 
         _logger.LogInformation("Matchmaking Worker started. Waiting for tickets...");
 
-        // Keep the worker alive until cancellation is requested
         while (!stoppingToken.IsCancellationRequested)
         {
             await Task.Delay(1000, stoppingToken);
@@ -83,17 +86,21 @@ public class MatchmakingWorker : BackgroundService
         {
             var body = ea.Body.ToArray();
             var json = Encoding.UTF8.GetString(body);
-            var ticket = JsonSerializer.Deserialize<MatchTicketRequest>(json);
+
+            // DEBUG LOG — remove once matchmaking works
+            _logger.LogInformation("RAW TICKET JSON: {Json}", json);
+
+            var ticket = JsonSerializer.Deserialize<MatchTicketRequest>(json, JsonOptions);
 
             if (ticket != null)
             {
-                _logger.LogInformation("Received Ticket: User {UserId}, Settings {SettingsId}, Ranked: {IsRanked}",
+                _logger.LogInformation(
+                    "Received Ticket: User {UserId}, Settings {SettingsId}, Ranked: {IsRanked}",
                     ticket.UserId, ticket.GameSettingsId, ticket.IsRanked);
 
                 await _engine.ProcessNewTicket(ticket);
             }
 
-            // Acknowledge the message so RabbitMQ removes it from the queue
             if (_channel != null)
             {
                 await _channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
@@ -102,7 +109,6 @@ public class MatchmakingWorker : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing ticket request.");
-            // Nack with requeue=false if it's a poison message (bad JSON) to avoid infinite loops
             if (_channel != null) await _channel.BasicNackAsync(ea.DeliveryTag, false, false);
         }
     }
@@ -113,13 +119,15 @@ public class MatchmakingWorker : BackgroundService
         {
             var body = ea.Body.ToArray();
             var json = Encoding.UTF8.GetString(body);
-            var cancelEvent = JsonSerializer.Deserialize<CancelTicketEvent>(json);
+
+            // DEBUG LOG — remove once matchmaking works
+            _logger.LogInformation("RAW CANCEL JSON: {Json}", json);
+
+            var cancelEvent = JsonSerializer.Deserialize<CancelTicketEvent>(json, JsonOptions);
 
             if (cancelEvent != null)
             {
                 _logger.LogInformation("Received Cancellation for User {UserId}", cancelEvent.UserId);
-
-                // TODO in Phase 4: Remove ticket from in-memory pool
                 _engine.CancelTicket(cancelEvent.UserId);
             }
 
@@ -132,7 +140,7 @@ public class MatchmakingWorker : BackgroundService
         {
             _logger.LogError(ex, "Error processing cancellation.");
             if (_channel != null) await _channel.BasicNackAsync(ea.DeliveryTag, false, false);
-        }   
+        }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)

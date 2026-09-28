@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RabbitMQ.Client;
 using SC.Api.Hubs;
 using SC.Api.Services;
 using SC.Api.Services.Implementations;
@@ -19,6 +20,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("SweeperChamps")));
+builder.Services.AddScoped<DbContext>(provider =>
+    provider.GetRequiredService<ApplicationDbContext>());
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
@@ -47,13 +50,39 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) &&
-                path.StartsWithSegments("/chatHub"))
+
+            var queryToken = context.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(queryToken) &&
+                (path.StartsWithSegments("/hubs") || path.StartsWithSegments("/chatHub")))
             {
-                context.Token = accessToken;
+                context.Token = queryToken;
+                return Task.CompletedTask;
             }
+
+            var authHeader = context.Request.Headers["Authorization"].ToString();
+            if (!string.IsNullOrEmpty(authHeader) &&
+                authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Token = authHeader.Substring("Bearer ".Length).Trim();
+            }
+
+            return Task.CompletedTask;
+        },
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"[JWT AUTH FAILED] Path: {context.HttpContext.Request.Path}");
+            Console.WriteLine($"[JWT AUTH FAILED] Reason: {context.Exception?.Message}");
+            if (context.Exception?.InnerException != null)
+            {
+                Console.WriteLine($"[JWT AUTH FAILED] Inner: {context.Exception.InnerException.Message}");
+            }
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            Console.WriteLine($"[JWT CHALLENGE] Path: {context.HttpContext.Request.Path}");
+            Console.WriteLine($"[JWT CHALLENGE] Error: {context.Error}, Description: {context.ErrorDescription}");
             return Task.CompletedTask;
         }
     };
@@ -61,34 +90,50 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<IMatchmakingPublisher, RabbitMqMatchmakingPublisher>();
 
-//DI for repos
+// ── RabbitMQ shared connection ──
+builder.Services.AddSingleton<IConnection>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var factory = new ConnectionFactory
+    {
+        HostName = config["RabbitMQ:HostName"] ?? "localhost",
+        Port = int.Parse(config["RabbitMQ:Port"] ?? "5672"),
+        UserName = config["RabbitMQ:UserName"] ?? "guest",
+        Password = config["RabbitMQ:Password"] ?? "guest"
+    };
+    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+});
+
+// ── Publishers ──
+builder.Services.AddSingleton<IMatchmakingPublisher, RabbitMqMatchmakingPublisher>();
+builder.Services.AddSingleton<IGameCreatedPublisher, GameCreatedPublisher>();
+
+// ── Consumers ──
+builder.Services.AddHostedService<MatchmakingResultsConsumer>();
+
+// ── Repos ──
 builder.Services.AddScoped<IGamePlayerRepository, GamePlayerRepository>();
 builder.Services.AddScoped<IGameRepository, GameRepository>();
 builder.Services.AddScoped<IGameSettingRepository, GameSettingRepository>();
-builder.Services.AddScoped<IMovesRepository,MovesRepository>();
+builder.Services.AddScoped<IMovesRepository, MovesRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserStatsRepository, UserStatsRepository>();
 
-//DI for services
-builder.Services.AddScoped<IGameService,GameService>();
-builder.Services.AddScoped<IGamePlayerService,GamePlayerService>();
-builder.Services.AddScoped<IGameSettingsService,GameSettingsService>();
-builder.Services.AddScoped<IUserStatsService,UserStatsService>();
+// ── Services ──
+builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddScoped<IGamePlayerService, GamePlayerService>();
+builder.Services.AddScoped<IGameSettingsService, GameSettingsService>();
+builder.Services.AddScoped<IUserStatsService, UserStatsService>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMatchmakingService, MatchmakingService>();
 
-builder.Services.AddScoped<IGameCompletionOrchestrator,GameCompletionOrchestrator>();
-
-
-builder.Services.AddHostedService<MatchmakingResultsConsumer>();
-
+builder.Services.AddScoped<IGameCompletionOrchestrator, GameCompletionOrchestrator>();
 
 builder.Services.AddLogging();
 
-// CORS - allow frontend dev ports
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -141,14 +186,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.UseCors("AllowAll");   // ⬅️ THIS WAS MISSING!
-
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.MapHub<MatchmakingHub>("hubs/matchmaking");
+app.MapHub<MatchmakingHub>("/hubs/matchmaking");
 
 app.Run();

@@ -1,3 +1,5 @@
+using SC_GameServer.Messaging;
+
 namespace SC_GameServer.GameEngine;
 
 public enum CellState { Hidden, Revealed, Flagged }
@@ -9,6 +11,7 @@ public class Cell
     public bool IsMine { get; set; }
     public int AdjacentMineCount { get; set; }
     public CellState State { get; set; } = CellState.Hidden;
+    public int? RevealedByPlayerId { get; set; }   // ← new
 
     public Cell(int x, int y) { X = x; Y = y; }
 }
@@ -86,13 +89,34 @@ public class Board
             if (InBounds(nx, ny)) yield return Grid[nx, ny];
         }
     }
-
-    public List<Cell> RevealWithCascade(int startX, int startY)
+    public List<BoardCellSnapshot> ToSnapshot()
+    {
+        var list = new List<BoardCellSnapshot>(Width * Height);
+        for (int y = 0; y < Height; y++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                var c = Grid[x, y];
+                list.Add(new BoardCellSnapshot
+                {
+                    X = x,
+                    Y = y,
+                    State = c.State.ToString(),       // "Hidden" | "Revealed" | "Flagged"
+                    AdjacentMineCount = c.AdjacentMineCount,
+                    IsMine = c.IsMine && c.State == CellState.Revealed, // don't leak mines unless revealed
+                    RevealedByPlayerId = c.RevealedByPlayerId,
+                });
+            }
+        }
+        return list;
+    }
+    public List<Cell> RevealWithCascade(int startX, int startY, int playerId)
     {
         var revealed = new List<Cell>();
         var start = Grid[startX, startY];
 
         start.State = CellState.Revealed;
+        start.RevealedByPlayerId = playerId;
         revealed.Add(start);
 
         var queue = new Queue<Cell>();
@@ -105,6 +129,7 @@ public class Board
             {
                 if (neighbor.State != CellState.Hidden || neighbor.IsMine) continue;
                 neighbor.State = CellState.Revealed;
+                neighbor.RevealedByPlayerId = playerId;
                 revealed.Add(neighbor);
                 if (neighbor.AdjacentMineCount == 0) queue.Enqueue(neighbor);
             }

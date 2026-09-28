@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.SignalR;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -12,11 +13,16 @@ namespace SC_GameServer.Messaging;
 
 public class GameCreatedConsumer : BackgroundService
 {
-    private readonly IConnection          _connection;
-    private readonly IGameStateManager    _gameStateManager;
-    private readonly IGameEngine          _gameEngine;
+    private readonly IConnection _connection;
+    private readonly IGameStateManager _gameStateManager;
+    private readonly IGameEngine _gameEngine;
     private readonly IHubContext<GameHub> _hubContext;
     private readonly ILogger<GameCreatedConsumer> _logger;
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     private IChannel? _channel;
 
@@ -27,11 +33,11 @@ public class GameCreatedConsumer : BackgroundService
         IHubContext<GameHub> hubContext,
         ILogger<GameCreatedConsumer> logger)
     {
-        _connection       = connection;
+        _connection = connection;
         _gameStateManager = gameStateManager;
-        _gameEngine       = gameEngine;
-        _hubContext       = hubContext;
-        _logger           = logger;
+        _gameEngine = gameEngine;
+        _hubContext = hubContext;
+        _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -45,11 +51,11 @@ public class GameCreatedConsumer : BackgroundService
             try
             {
                 var json = Encoding.UTF8.GetString(ea.Body.ToArray());
-                var msg  = JsonSerializer.Deserialize<GameCreatedMessage>(json);
+                _logger.LogInformation("RAW game.created: {Json}", json);
 
+                var msg = JsonSerializer.Deserialize<GameCreatedMessage>(json, JsonOptions);
                 if (msg is null)
                 {
-                    _logger.LogWarning("Received unparseable {Queue} message", QueueNames.GameCreated);
                     await _channel.BasicAckAsync(ea.DeliveryTag, false);
                     return;
                 }
@@ -58,9 +64,9 @@ public class GameCreatedConsumer : BackgroundService
 
                 _gameStateManager.AddGame(new GameInstance
                 {
-                    GameId     = msg.GameId,
-                    Settings   = msg.GameSettings,
-                    Players    = msg.Players,
+                    GameId = msg.GameId,
+                    Settings = msg.GameSettings,
+                    Players = msg.Players,
                     BoardState = creation.BoardState
                 });
 

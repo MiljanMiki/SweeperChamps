@@ -1,13 +1,7 @@
 ﻿using SC.Matchmaker.Services.Interfaces;
-using SC.Matchmaker.Strategies.Implementations;
 using SC.Matchmaker.Strategies.Interfaces;
 using SC.Messaging.Matchmaker;
 using SC.Messaging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using SC.Api.Services.Interfaces;
 
 namespace SC.Matchmaker.Core
@@ -20,9 +14,12 @@ namespace SC.Matchmaker.Core
         private readonly IMatchFoundPublisher _resultsPublisher;
         private readonly ILogger<MatchmakingEngine> _logger;
 
-        public MatchmakingEngine(TicketPool ticketPool, IMatchmakingStrategy strategy,
+        public MatchmakingEngine(
+            TicketPool ticketPool,
+            IMatchmakingStrategy strategy,
             IServiceScopeFactory scopeFactory,
-            IMatchFoundPublisher resultsPublisher, ILogger<MatchmakingEngine> logger)
+            IMatchFoundPublisher resultsPublisher,
+            ILogger<MatchmakingEngine> logger)
         {
             _ticketPool = ticketPool;
             _resultsPublisher = resultsPublisher;
@@ -33,6 +30,18 @@ namespace SC.Matchmaker.Core
 
         public async Task ProcessNewTicket(MatchTicketRequest ticket)
         {
+            if (ticket is null) return;
+            if (string.IsNullOrWhiteSpace(ticket.UserId))
+            {
+                _logger.LogWarning("Ticket with null/empty UserId ignored. Settings={SettingsId}", ticket.GameSettingsId);
+                return;
+            }
+            if (ticket.GameSettingsId <= 0)
+            {
+                _logger.LogWarning("Ticket with invalid GameSettingsId={Id} for User {UserId} ignored.", ticket.GameSettingsId, ticket.UserId);
+                return;
+            }
+
             _ticketPool.AddTicket(ticket);
             _logger.LogInformation("Added User {UserId} to pool.", ticket.UserId);
 
@@ -47,42 +56,35 @@ namespace SC.Matchmaker.Core
 
         private async Task TryFormMatchAsync(int gameSettingsId, bool isRanked)
         {
-            // Example: Dynamically select strategy based on GameSettingsId
-            // In a real app, you might fetch game capacity from a database or config
-
-            var availableTickets = _ticketPool.GetTicketsInPool(gameSettingsId, isRanked);
-            if (!availableTickets.Any())
-                return;
-
-            int requiredPlayers = availableTickets.First().RequiredPlayers;
-
+            var availableTickets = _ticketPool.GetTicketsInPool(gameSettingsId, isRanked).ToList();
+            if (!availableTickets.Any()) return;
 
             var matchedLobby = _strategy.TryMatch(availableTickets);
-
             if (matchedLobby == null) return;
 
             try
             {
                 var matchedUserIds = matchedLobby.Select(t => t.UserId).ToList();
-
-                // Atomically remove players from the pool so they aren't matched twice
                 _ticketPool.RemoveTickets(matchedUserIds);
 
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IGameService>();
                 int newGameId = await service.CreateGame(gameSettingsId, matchedUserIds, isRanked);
 
-                //Publish to RabbitMQ
-                var matchEvent = new MatchFoundEvent { GameId = newGameId, UserIds = matchedUserIds };
+                var matchEvent = new MatchFoundEvent
+                {
+                    GameId = newGameId,
+                    UserIds = matchedUserIds
+                };
                 _resultsPublisher.Publish(matchEvent);
 
-                _logger.LogInformation("MATCH FOUND! Players: {Players}", string.Join(", ", matchedUserIds));
+                _logger.LogInformation("MATCH FOUND! GameId={GameId}, Players: {Players}",
+                    newGameId, string.Join(", ", matchedUserIds));
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                _logger.LogError(e,e.Message);
+                _logger.LogError(e, "Error forming match for settings {SettingsId}", gameSettingsId);
             }
-
         }
     }
 }

@@ -1,222 +1,173 @@
-// src/hooks/useGame.ts
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { HubConnection } from "@microsoft/signalr";
-import { buildConnection, stopConnection } from "../services/hubService";
-import {
-  type CellView,
-  type MoveMadeEvent,
-  type GameOverResult,
-  type PendingGame,
-  type RevealedCell,
-  ActionTypes,
-  HubEvents,
+import { buildGameConnection, stopGameConnection } from "../services/gameHub";
+import type {
+  CellView,
+  MoveMadeEvent,
+  GameOverResult,
+  BoardStateSnapshot,
 } from "../types/game";
 
 interface UseGameResult {
   board: CellView[][];
-  connection: HubConnection | null;
+  settings: BoardStateSnapshot["settings"] | null;
+  myPlayerId: number;
   connected: boolean;
   gameOver: boolean;
   results: GameOverResult[] | null;
-  currentTurn: number | null;
-  rejectionMessage: string | null;
+  rejection: string | null;
+  currentTurnPlayerId: number | null;
   timeoutMessage: string | null;
   revealCell: (x: number, y: number) => Promise<void>;
   flagCell: (x: number, y: number) => Promise<void>;
 }
 
-export function useGame(game: PendingGame, token: string): UseGameResult {
+export function useGame(
+  token: string,
+  myPlayerId: number
+): UseGameResult {
   const [board, setBoard] = useState<CellView[][]>([]);
-  const [connection, setConnection] = useState<HubConnection | null>(null);
+  const [settings, setSettings] = useState<BoardStateSnapshot["settings"] | null>(null);
   const [connected, setConnected] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [results, setResults] = useState<GameOverResult[] | null>(null);
-  const [currentTurn, setCurrentTurn] = useState<number | null>(null);
-  const [rejectionMessage, setRejectionMessage] = useState<string | null>(null);
+  const [rejection, setRejection] = useState<string | null>(null);
+  const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState<number | null>(null);
   const [timeoutMessage, setTimeoutMessage] = useState<string | null>(null);
-
   const connRef = useRef<HubConnection | null>(null);
 
-  // Find which team a player belongs to
-  const getTeamColor = useCallback(
-    (playerId: number): "Red" | "Blue" => {
-      const player = game.players.find((p) => p.playerId === playerId);
-      return player?.team ?? "Red";
-    },
-    [game.players]
-  );
-
-  // Initialize empty board from game settings
   useEffect(() => {
-    const initialBoard: CellView[][] = Array.from({ length: game.settings.rows }, (_, y) =>
-      Array.from({ length: game.settings.cols }, (_, x) => ({
-        state: "Hidden" as const,
-        adjacentMineCount: 0,
-        revealedBy: null,
-        isMine: false,
-        x,
-        y,
-      }))
-    );
-    setBoard(initialBoard);
-  }, [game.settings.rows, game.settings.cols]);
+    if (!token) return;
+    let cancelled = false;
 
-  // Helper to update a single cell immutably
-  const updateCell = useCallback(
-    (x: number, y: number, patch: Partial<CellView>) => {
+    const conn = buildGameConnection(token);
+    connRef.current = conn;
+
+    // ── Snapshot from server ──
+    conn.on("BoardState", (snap: BoardStateSnapshot) => {
+      const rows = snap.settings.height;
+      const cols = snap.settings.width;
+      const grid: CellView[][] = Array.from({ length: rows }, (_, y) =>
+        Array.from({ length: cols }, (_, x) => ({
+          x,
+          y,
+          state: "Hidden",
+          adjacentMineCount: 0,
+          isMine: false,
+          revealedByPlayerId: null,
+        }))
+      );
+      for (const c of snap.cells) {
+        grid[c.y][c.x] = {
+          x: c.x,
+          y: c.y,
+          state: c.state as CellView["state"],
+          adjacentMineCount: c.adjacentMineCount,
+          isMine: c.isMine,
+          revealedByPlayerId: c.revealedByPlayerId ?? null,
+        };
+      }
+      setBoard(grid);
+      setSettings(snap.settings);
+      setCurrentTurnPlayerId(snap.currentTurnPlayerId ?? null);
+      setGameOver(!!snap.isGameOver);
+      if (snap.finalResults) setResults(snap.finalResults);
+    });
+
+    conn.on("MoveMade", (evt: MoveMadeEvent) => {
+      const p = evt.payload;
       setBoard((prev) => {
-        const next = prev.map((row) => row.map((cell) => ({ ...cell })));
-        if (next[y]?.[x]) {
-          next[y][x] = { ...next[y][x], ...patch };
+        if (!prev.length) return prev;
+        const next = prev.map((row) => row.map((c) => ({ ...c })));
+
+        if (p.hitMine) {
+          next[p.y][p.x] = { ...next[p.y][p.x], state: "Revealed", isMine: true, revealedByPlayerId: evt.playerId };
+          return next;
+        }
+        if (p.revealedCells && p.revealedCells.length > 0) {
+          for (const rc of p.revealedCells) {
+            next[rc.y][rc.x] = {
+              ...next[rc.y][rc.x],
+              state: "Revealed",
+              adjacentMineCount: rc.adjacentMineCount,
+              revealedByPlayerId: evt.playerId,
+            };
+          }
+          return next;
+        }
+        if (p.actionType === "Flag") {
+          next[p.y][p.x] = { ...next[p.y][p.x], state: "Flagged" };
+        } else if (p.actionType === "Unflag") {
+          next[p.y][p.x] = { ...next[p.y][p.x], state: "Hidden" };
         }
         return next;
       });
-    },
-    []
-  );
+    });
 
-  // Connect + register listeners
-  useEffect(() => {
-    let cancelled = false;
+    conn.on("MoveRejected", (reason: string) => {
+      setRejection(reason);
+      setTimeout(() => setRejection(null), 3000);
+    });
 
-    const connect = async () => {
-      const conn = buildConnection(token);
-      connRef.current = conn;
+    conn.on("TurnChanged", (nextPlayerId: number) => setCurrentTurnPlayerId(nextPlayerId));
 
-      // ---- Register listeners BEFORE starting ----
+    conn.on("PlayerTimeout", (payload: { playerId: number }) => {
+      setTimeoutMessage(`Player ${payload.playerId} ran out of time`);
+      setTimeout(() => setTimeoutMessage(null), 3000);
+    });
 
-      conn.on(HubEvents.MoveMade, ({ playerId, payload }: MoveMadeEvent) => {
-        const team = getTeamColor(playerId);
+    conn.on("GameOver", (final: GameOverResult[]) => {
+      setResults(final);
+      setGameOver(true);
+    });
 
-        if (payload.hitMine) {
-          updateCell(payload.x, payload.y, {
-            state: "Revealed",
-            isMine: true,
-            revealedBy: team,
-          });
-          return;
-        }
-
-        // Reveal all the cells the server told us about
-        setBoard((prev) => {
-          const next = prev.map((row) => row.map((cell) => ({ ...cell })));
-          for (const revealed of payload.revealedCells as RevealedCell[]) {
-            if (next[revealed.y]?.[revealed.x]) {
-              next[revealed.y][revealed.x] = {
-                ...next[revealed.y][revealed.x],
-                state: "Revealed",
-                adjacentMineCount: revealed.adjacentMineCount,
-                revealedBy: team,
-              };
-            }
-          }
-          return next;
-        });
-      });
-
-      conn.on(HubEvents.MoveRejected, (reason: string) => {
-        setRejectionMessage(reason);
-        setTimeout(() => setRejectionMessage(null), 3000);
-      });
-
-      conn.on(HubEvents.TurnChanged, (nextPlayerId: number) => {
-        setCurrentTurn(nextPlayerId);
-      });
-
-      conn.on(HubEvents.PlayerTimeout, ({ playerId }: { playerId: number }) => {
-        const player = game.players.find((p) => p.playerId === playerId);
-        setTimeoutMessage(`${player?.username ?? `Player ${playerId}`} ran out of time!`);
-        setTimeout(() => setTimeoutMessage(null), 3000);
-      });
-
-      conn.on(HubEvents.PlayerConnected, (playerId: number) => {
-        console.log(`Player ${playerId} connected`);
-      });
-
-      conn.on(HubEvents.GameOver, (finalResults: GameOverResult[]) => {
-        setResults(finalResults);
-        setGameOver(true);
-      });
-
-      // ---- Start connection ----
+    const start = async () => {
       try {
         await conn.start();
-        if (cancelled) {
-          await conn.stop();
-          return;
-        }
-        console.log("SignalR connected");
+        if (cancelled) { await conn.stop(); return; }
         setConnected(true);
-
-        // Join the specific game
-        await conn.invoke("JoinGame", game.gameId);
+        console.log("[Game] Connected");
+        await conn.invoke("JoinGame");
+        console.log("[Game] JoinGame invoked");
       } catch (err) {
-        console.error("SignalR connection failed:", err);
+        console.error("[Game] Connection failed:", err);
       }
     };
-
-    connect();
+    start();
 
     return () => {
       cancelled = true;
-      connRef.current?.off(HubEvents.MoveMade);
-      connRef.current?.off(HubEvents.MoveRejected);
-      connRef.current?.off(HubEvents.TurnChanged);
-      connRef.current?.off(HubEvents.PlayerTimeout);
-      connRef.current?.off(HubEvents.PlayerConnected);
-      connRef.current?.off(HubEvents.GameOver);
-      stopConnection();
+      ["BoardState","MoveMade","MoveRejected","TurnChanged","PlayerTimeout","PlayerConnected","GameOver"]
+        .forEach((e) => conn.off(e));
+      stopGameConnection();
       setConnected(false);
     };
-  }, [game.gameId, token, getTeamColor, updateCell, game.players]);
+  }, [token]);
 
-  // ---- Actions ----
-  const revealCell = useCallback(
-    async (x: number, y: number) => {
-      const conn = connRef.current;
-      if (!conn || !connected || gameOver) return;
+  const revealCell = useCallback(async (x: number, y: number) => {
+    const conn = connRef.current;
+    if (!conn || !connected || gameOver) return;
+    try {
+      await conn.invoke("MakeMove", { actionType: "Reveal", x, y });
+    } catch (err) {
+      console.error("[Game] Reveal failed:", err);
+    }
+  }, [connected, gameOver]);
 
-      try {
-        await conn.invoke("MakeMove", game.gameId, {
-          actionType: ActionTypes.Reveal,
-          x,
-          y,
-        });
-      } catch (err) {
-        console.error("MakeMove (Reveal) failed:", err);
-      }
-    },
-    [connected, gameOver, game.gameId]
-  );
-
-  const flagCell = useCallback(
-    async (x: number, y: number) => {
-      const conn = connRef.current;
-      if (!conn || !connected || gameOver) return;
-
-      try {
-        await conn.invoke("MakeMove", game.gameId, {
-          actionType: ActionTypes.Flag,
-          x,
-          y,
-        });
-      } catch (err) {
-        console.error("MakeMove (Flag) failed:", err);
-      }
-    },
-    [connected, gameOver, game.gameId]
-  );
+  const flagCell = useCallback(async (x: number, y: number) => {
+    const conn = connRef.current;
+    if (!conn || !connected || gameOver) return;
+    try {
+      await conn.invoke("MakeMove", { actionType: "Flag", x, y });
+    } catch (err) {
+      console.error("[Game] Flag failed:", err);
+    }
+  }, [connected, gameOver]);
 
   return {
-    board,
-    connection,
-    connected,
-    gameOver,
-    results,
-    currentTurn,
-    rejectionMessage,
-    timeoutMessage,
-    revealCell,
-    flagCell,
+    board, settings, myPlayerId,
+    connected, gameOver, results, rejection,
+    currentTurnPlayerId, timeoutMessage,
+    revealCell, flagCell,
   };
 }

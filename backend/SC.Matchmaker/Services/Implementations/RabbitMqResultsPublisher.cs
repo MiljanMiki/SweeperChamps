@@ -13,6 +13,11 @@ public class RabbitMqResultsPublisher : IMatchFoundPublisher, IDisposable
     private readonly IConnection _connection;
     private readonly IChannel _channel;
 
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        IncludeFields = true
+    };
+
     public RabbitMqResultsPublisher(IConfiguration configuration)
     {
         var factory = new ConnectionFactory
@@ -25,14 +30,29 @@ public class RabbitMqResultsPublisher : IMatchFoundPublisher, IDisposable
 
         _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
         _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
+
+        _channel.ExchangeDeclareAsync(
+            exchange: RabbitMqConstants.MatchmakingExchange,
+            type: ExchangeType.Topic,
+            durable: true,
+            autoDelete: false
+        ).GetAwaiter().GetResult();
     }
 
     public void Publish(MatchFoundEvent matchEvent)
     {
-        var json = JsonSerializer.Serialize(matchEvent);
+        var json = JsonSerializer.Serialize(matchEvent, JsonOptions);
+
+        // DEBUG LOG — remove once matchmaking works
+        Console.WriteLine($"[PUBLISH] match.found: {json}");
+
         var body = Encoding.UTF8.GetBytes(json);
 
-        var props = new BasicProperties { ContentType = "application/json", DeliveryMode = DeliveryModes.Persistent };
+        var props = new BasicProperties
+        {
+            ContentType = "application/json",
+            DeliveryMode = DeliveryModes.Persistent
+        };
 
         _channel.BasicPublishAsync(
             exchange: RabbitMqConstants.MatchmakingExchange,
@@ -45,7 +65,16 @@ public class RabbitMqResultsPublisher : IMatchFoundPublisher, IDisposable
 
     public void Dispose()
     {
-        if (_channel.IsOpen) _channel.CloseAsync().GetAwaiter().GetResult();
-        if (_connection.IsOpen) _connection.CloseAsync().GetAwaiter().GetResult();
+        if (_channel.IsOpen)
+        {
+            _channel.CloseAsync().GetAwaiter().GetResult();
+            _channel.Dispose();
+        }
+
+        if (_connection.IsOpen)
+        {
+            _connection.CloseAsync().GetAwaiter().GetResult();
+            _connection.Dispose();
+        }
     }
 }

@@ -1,110 +1,113 @@
-/* src/components/game/GamePage.css */
 .game-page {
   max-width: 900px;
   margin: 0 auto;
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
+  text-align: center;
 }
 
 .game-page__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
+  margin-bottom: 12px;
 }
 
-.connection-status {
-  font-size: 14px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: #f0f0f0;
-}
-
-.connection-status.is-connected {
-  background: #d4f5d4;
-  color: #2a6b2a;
-}
-
-.connection-status.is-connecting {
-  background: #fff4d4;
-  color: #8a6b00;
-}
-
-.game-page__players {
+.game-page__meta {
   display: flex;
-  gap: 16px;
-  width: 100%;
+  gap: 20px;
   justify-content: center;
-  flex-wrap: wrap;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #555;
 }
 
-.player-card {
-  padding: 12px 20px;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  display: flex;
+.board {
+  display: inline-flex;
   flex-direction: column;
-  align-items: center;
-  min-width: 140px;
-  transition: transform 0.15s, box-shadow 0.15s;
+  background: #b0b0b0;
+  padding: 4px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin: 20px auto;
 }
 
-.player-card--red {
-  background: #ffe5e5;
-  border-color: #ff8080;
+.board-row {
+  display: flex;
 }
 
-.player-card--blue {
-  background: #e5eeff;
-  border-color: #80a8ff;
-}
-
-.player-card.is-active {
-  transform: scale(1.05);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  border-color: #333;
-}
-
-.player-card__name {
-  font-weight: 600;
+.cell {
+  width: 36px;
+  height: 36px;
+  margin: 1px;
   font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid;
+  padding: 0;
+  font-family: inherit;
+  user-select: none;
 }
 
-.player-card__team {
-  font-size: 12px;
-  text-transform: uppercase;
-  color: #666;
-  letter-spacing: 1px;
+.cell--hidden {
+  background: #c0c0c0;
+  border-color: #ffffff #808080 #808080 #ffffff;
 }
 
-.player-card__score {
-  font-size: 14px;
-  margin-top: 4px;
-  font-weight: 500;
+.cell--hidden:hover {
+  background: #d0d0d0;
 }
 
-.game-page__toast {
-  padding: 10px 16px;
+.cell--hidden:active {
+  border-color: #808080 #ffffff #ffffff #808080;
+}
+
+.cell--flagged {
+  background: #c0c0c0;
+  border-color: #ffffff #808080 #808080 #ffffff;
+}
+
+.cell--revealed {
+  background: #e0e0e0;
+  border: 1px solid #808080;
+  cursor: default;
+}
+
+.cell--mine {
+  background: #ff4444;
+  color: white;
+}
+
+.num--1 { color: #0000ff; }
+.num--2 { color: #008000; }
+.num--3 { color: #ff0000; }
+.num--4 { color: #000080; }
+.num--5 { color: #800000; }
+.num--6 { color: #008080; }
+.num--7 { color: #000000; }
+.num--8 { color: #808080; }
+
+.status-connected { color: #2a6b2a; font-weight: 500; }
+.status-connecting { color: #8a6b00; font-weight: 500; }
+
+.toast {
+  padding: 8px 16px;
   border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  margin: 10px auto;
+  max-width: 400px;
+}
+.toast--error { background: #ffe0e0; color: #a00; }
+.toast--warn  { background: #fff4d4; color: #8a6b00; }
+
+.turn-indicator {
+  margin: 10px 0;
+  font-weight: 600;
+  font-size: 15px;
 }
 
-.game-page__toast--error {
-  background: #ffe0e0;
-  color: #a00;
-}
-
-.game-page__toast--warning {
-  background: #fff4d4;
-  color: #8a6b00;
-}
-
-.game-over-overlay {
+.overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
@@ -114,33 +117,26 @@
   z-index: 1000;
 }
 
-.game-over-card {
+.overlay__card {
   background: white;
   padding: 32px 40px;
   border-radius: 12px;
   min-width: 320px;
-  text-align: center;
 }
 
-.game-over-card h2 {
-  margin: 0 0 20px;
-}
-
-.game-over__results {
+.overlay__results {
   list-style: none;
   padding: 0;
-  margin: 0 0 20px;
+  margin: 20px 0;
 }
 
-.game-over__results li {
-  display: flex;
-  justify-content: space-between;
+.overlay__results li {
   padding: 8px 0;
   border-bottom: 1px solid #eee;
   font-size: 16px;
 }
 
-.game-over__button {
+.overlay__button {
   background: #667eea;
   color: white;
   border: none;
@@ -151,14 +147,12 @@
   font-size: 15px;
 }
 
-.game-over__button:hover {
+.overlay__button:hover {
   background: #5a67d8;
 }
 
-.game-page__loading,
 .game-page__error {
   text-align: center;
   padding: 60px 20px;
-  font-size: 16px;
-  color: #666;
+  color: #a00;
 }

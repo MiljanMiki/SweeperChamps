@@ -16,9 +16,6 @@ public partial class ApplicationDbContext : DbContext
     
     Could not load database collations.
      */
-    public ApplicationDbContext()
-    {
-    }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)

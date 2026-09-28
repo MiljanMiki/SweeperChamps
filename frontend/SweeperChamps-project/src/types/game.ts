@@ -1,36 +1,25 @@
-// src/types/game.ts
 export interface CellView {
+  x: number;
+  y: number;
   state: "Hidden" | "Revealed" | "Flagged";
   adjacentMineCount: number;
-  revealedBy: "Red" | "Blue" | null;
   isMine: boolean;
-  x: number;
-  y: number;
+  revealedByPlayerId: number | null;
 }
 
-export interface Player {
-  playerId: number;
-  username: string;
-  team: "Red" | "Blue";
-  score: number;
-}
-
-export interface RevealedCell {
+export interface MoveMadePayload {
+  actionType: string;
   x: number;
   y: number;
-  adjacentMineCount: number;
-}
-
-export interface MovePayload {
-  revealedCells: RevealedCell[];
-  hitMine: boolean;
-  x: number;
-  y: number;
+  hitMine?: boolean;
+  revealedCells?: { x: number; y: number; adjacentMineCount: number }[];
+  wasMine?: boolean;
+  playerId?: number;
 }
 
 export interface MoveMadeEvent {
   playerId: number;
-  payload: MovePayload;
+  payload: MoveMadePayload;
 }
 
 export interface GameOverResult {
@@ -38,29 +27,36 @@ export interface GameOverResult {
   score: number;
 }
 
-export interface GameSettings {
-  rows: number;
-  cols: number;
-  mineCount: number;
-  mode: "Classic" | "TimeRush" | "Team";
+export interface GameSettingsDto {
+  width: number;
+  height: number;
+  numberOfMines: number;
+  startTimeSeconds: number | null;
+  teamSize: number;
+  winCondition: string;
+  hasPowerUps: boolean;
 }
 
-export interface PendingGame {
+export interface GamePlayerDto {
+  playerId: number;
+  teamColor: string;
+}
+
+export interface BoardCellSnapshot {
+  x: number;
+  y: number;
+  state: string;
+  adjacentMineCount: number;
+  isMine: boolean;
+  revealedByPlayerId?: number | null;
+}
+
+export interface BoardStateSnapshot {
   gameId: number;
-  players: Player[];
-  settings: GameSettings;
+  settings: GameSettingsDto;
+  players: GamePlayerDto[];
+  cells: BoardCellSnapshot[];
+  currentTurnPlayerId?: number | null;
+  isGameOver: boolean;
+  finalResults?: GameOverResult[] | null;
 }
-
-export const ActionTypes = {
-  Reveal: "Reveal",
-  Flag: "Flag",
-} as const;
-
-export const HubEvents = {
-  MoveMade: "MoveMade",
-  MoveRejected: "MoveRejected",
-  TurnChanged: "TurnChanged",
-  PlayerTimeout: "PlayerTimeout",
-  PlayerConnected: "PlayerConnected",
-  GameOver: "GameOver",
-} as const;

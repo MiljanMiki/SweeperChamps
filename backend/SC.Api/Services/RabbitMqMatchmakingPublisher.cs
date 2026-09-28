@@ -13,7 +13,16 @@ namespace SC.Api.Services
         private readonly IChannel _channel;
         private readonly ILogger<RabbitMqMatchmakingPublisher> _logger;
 
-        public RabbitMqMatchmakingPublisher(IConfiguration configuration, ILogger<RabbitMqMatchmakingPublisher> logger)
+        // IncludeFields = true guards against future message classes using public fields.
+        // JsonSerializerDefaults.Web = camelCase + case-insensitive deserialization.
+        private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+        {
+            IncludeFields = true
+        };
+
+        public RabbitMqMatchmakingPublisher(
+            IConfiguration configuration,
+            ILogger<RabbitMqMatchmakingPublisher> logger)
         {
             _logger = logger;
 
@@ -25,11 +34,9 @@ namespace SC.Api.Services
                 Password = configuration["RabbitMQ:Password"] ?? "guest"
             };
 
-            // Create persistent connection and channel for publishing
             _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
             _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
 
-            // Ensure the Topic Exchange exists before attempting to publish
             _channel.ExchangeDeclareAsync(
                 exchange: RabbitMqConstants.MatchmakingExchange,
                 type: ExchangeType.Topic,
@@ -43,28 +50,32 @@ namespace SC.Api.Services
             var routingKey = RabbitMqConstants.GetTicketRoutingKey(ticket.GameSettingsId, ticket.IsRanked);
             PublishMessage(routingKey, ticket);
 
-            _logger.LogInformation("Published MatchTicketRequest for User {UserId} with RoutingKey '{RoutingKey}'",
+            _logger.LogInformation(
+                "Published MatchTicketRequest for User {UserId} with RoutingKey '{RoutingKey}'",
                 ticket.UserId, routingKey);
         }
 
         public void PublishCancelTicket(string userId)
         {
             var cancelEvent = new CancelTicketEvent(userId);
-            var routingKey = "ticket.cancel";
-            PublishMessage(routingKey, cancelEvent);
+            PublishMessage("ticket.cancel", cancelEvent);
 
             _logger.LogInformation("Published CancelTicketEvent for User {UserId}", userId);
         }
 
         private void PublishMessage<T>(string routingKey, T message)
         {
-            var json = JsonSerializer.Serialize(message);
+            var json = JsonSerializer.Serialize(message, JsonOptions);
+
+            // DEBUG LOG — remove once matchmaking works
+            _logger.LogInformation("PUBLISHING JSON to '{RoutingKey}': {Json}", routingKey, json);
+
             var body = Encoding.UTF8.GetBytes(json);
 
             var props = new BasicProperties
             {
                 ContentType = "application/json",
-                DeliveryMode = DeliveryModes.Persistent // Ensures messages survive broker restarts
+                DeliveryMode = DeliveryModes.Persistent
             };
 
             _channel.BasicPublishAsync(
