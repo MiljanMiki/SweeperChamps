@@ -27,16 +27,16 @@ public class GameSettingsDto
 public class GamePlayerDto
 {
     public int PlayerId { get; set; }
+    public string Username { get; set; } = "";   // ← new
     public TeamColor TeamColor { get; set; }
 }
 
 // ---------- Outbound: GameServer -> Client (SignalR) ----------
-
 public class BoardCellSnapshot
 {
     public int X { get; set; }
     public int Y { get; set; }
-    public string State { get; set; } = "Hidden"; // Hidden | Revealed | Flagged
+    public string State { get; set; } = "Hidden";
     public int AdjacentMineCount { get; set; }
     public bool IsMine { get; set; }
     public int? RevealedByPlayerId { get; set; }
@@ -66,7 +66,7 @@ public class GameFinishedMessage
 {
     public int GameId { get; set; }
     public DateTime EndTime { get; set; }
-    public GameStatus Status { get; set; }
+    public GameStatus Status { get; set; }   // serialized as "Finished"
     public List<PlayerResultDto> Results { get; set; } = new();
 }
 

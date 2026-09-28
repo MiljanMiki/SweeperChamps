@@ -73,10 +73,6 @@ builder.Services.AddAuthentication(options =>
         {
             Console.WriteLine($"[JWT AUTH FAILED] Path: {context.HttpContext.Request.Path}");
             Console.WriteLine($"[JWT AUTH FAILED] Reason: {context.Exception?.Message}");
-            if (context.Exception?.InnerException != null)
-            {
-                Console.WriteLine($"[JWT AUTH FAILED] Inner: {context.Exception.InnerException.Message}");
-            }
             return Task.CompletedTask;
         },
         OnChallenge = context =>
@@ -111,6 +107,7 @@ builder.Services.AddSingleton<IGameCreatedPublisher, GameCreatedPublisher>();
 
 // ── Consumers ──
 builder.Services.AddHostedService<MatchmakingResultsConsumer>();
+builder.Services.AddHostedService<GameFinishedConsumer>();
 
 // ── Repos ──
 builder.Services.AddScoped<IGamePlayerRepository, GamePlayerRepository>();
@@ -128,7 +125,6 @@ builder.Services.AddScoped<IUserStatsService, UserStatsService>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMatchmakingService, MatchmakingService>();
-
 builder.Services.AddScoped<IGameCompletionOrchestrator, GameCompletionOrchestrator>();
 
 builder.Services.AddLogging();
@@ -151,6 +147,16 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHttpClient<IGameServerClient, GameServerClient>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7230"); // tvoj GameServer URL
+    client.Timeout = TimeSpan.FromSeconds(3);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    // Za self-signed dev cert
+    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+});
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebTemplate API", Version = "v1" });

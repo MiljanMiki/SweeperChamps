@@ -4,10 +4,11 @@ namespace SC_GameServer.GameEngine;
 
 public class PlayerRuntimeState
 {
-    public int       PlayerId    { get; init; }
-    public TeamColor TeamColor   { get; init; }
-    public int       Score       { get; set; }
-    public bool      IsEliminated { get; set; }
+    public int PlayerId { get; init; }
+    public string Username { get; init; } = "";   // ← new
+    public TeamColor TeamColor { get; init; }
+    public int Score { get; set; }
+    public bool IsEliminated { get; set; }
 }
 
 public class MinesweeperGameState : EngineBoardState

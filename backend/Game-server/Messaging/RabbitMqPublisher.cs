@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using RabbitMQ.Client;
 
 namespace SC_GameServer.Messaging;
@@ -12,9 +13,15 @@ public interface IRabbitMqPublisher
 
 public class RabbitMqPublisher : IRabbitMqPublisher, IAsyncDisposable
 {
-    private readonly IConnection    _connection;
-    private IChannel?               _channel;
-    private readonly SemaphoreSlim  _initLock = new(1, 1);
+    private readonly IConnection _connection;
+    private IChannel? _channel;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+
+    private static readonly JsonSerializerOptions JsonOptions =
+        new(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
 
     public RabbitMqPublisher(IConnection connection)
     {
@@ -31,7 +38,7 @@ public class RabbitMqPublisher : IRabbitMqPublisher, IAsyncDisposable
             if (_channel is null)
             {
                 _channel = await _connection.CreateChannelAsync();
-                await _channel.QueueDeclareAsync(QueueNames.GameMoves,    durable: true, exclusive: false, autoDelete: false);
+                await _channel.QueueDeclareAsync(QueueNames.GameMoves, durable: true, exclusive: false, autoDelete: false);
                 await _channel.QueueDeclareAsync(QueueNames.GameFinished, durable: true, exclusive: false, autoDelete: false);
             }
         }
@@ -40,14 +47,15 @@ public class RabbitMqPublisher : IRabbitMqPublisher, IAsyncDisposable
         return _channel;
     }
 
-    public Task PublishMoveMadeAsync(MoveMadeMessage message)       => PublishAsync(QueueNames.GameMoves,    message);
+    public Task PublishMoveMadeAsync(MoveMadeMessage message) => PublishAsync(QueueNames.GameMoves, message);
     public Task PublishGameFinishedAsync(GameFinishedMessage message) => PublishAsync(QueueNames.GameFinished, message);
 
     private async Task PublishAsync<T>(string queue, T message)
     {
         var channel = await GetChannelAsync();
-        var body    = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
-        var props   = new BasicProperties { Persistent = true };
+        var json = JsonSerializer.Serialize(message, JsonOptions);
+        var body = Encoding.UTF8.GetBytes(json);
+        var props = new BasicProperties { Persistent = true };
         await channel.BasicPublishAsync(exchange: string.Empty, routingKey: queue, mandatory: false, basicProperties: props, body: body);
     }
 

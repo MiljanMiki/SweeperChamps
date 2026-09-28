@@ -1,4 +1,3 @@
-import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
@@ -19,9 +18,30 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/lobby" element={<ProtectedRoute><Lobby /></ProtectedRoute>} />
-              <Route path="/game"    element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
-              <Route path="/"        element={<ProtectedRoute><Lobby /></ProtectedRoute>} />
+              <Route
+                path="/lobby"
+                element={
+                  <ProtectedRoute>
+                    <Lobby />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/game"
+                element={
+                  <ProtectedRoute>
+                    <GamePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Lobby />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </div>
         </div>

@@ -1,35 +1,33 @@
-// src/components/auth/Register.tsx
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import './Auth.css';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import "./Auth.css";
 
 function Register() {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [slikaURL, setSlikaURL] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const validateForm = (): boolean => {
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return false;
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       return false;
     }
     if (username.length < 3) {
-      setError('Username must be at least 3 characters');
+      setError("Username must be at least 3 characters");
       return false;
     }
-    if (!email.includes('@')) {
-      setError('Please enter a valid email address');
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address");
       return false;
     }
     return true;
@@ -37,24 +35,17 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
 
     try {
-      await register({
-        username,
-        email,
-        password,
-        slikaURL: slikaURL || '', // Send empty string if not provided
-      });
-      navigate('/game');
+      await register({ username, email, password, confirmPassword });
+      navigate("/lobby");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : "Registration failed");
       setLoading(false);
     }
   };
@@ -126,20 +117,8 @@ function Register() {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="slikaURL">Profile Image URL (optional)</label>
-            <input
-              type="url"
-              id="slikaURL"
-              value={slikaURL}
-              onChange={(e) => setSlikaURL(e.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-              disabled={loading}
-            />
-          </div>
-
           <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Creating account...' : 'Register'}
+            {loading ? "Creating account..." : "Register"}
           </button>
         </form>
 

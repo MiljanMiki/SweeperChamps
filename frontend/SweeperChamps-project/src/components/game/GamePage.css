@@ -21,6 +21,69 @@
   color: #555;
 }
 
+/* ── Players panel ── */
+.players-panel {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 16px 0 24px;
+  flex-wrap: wrap;
+}
+
+.player-card {
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  min-width: 140px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  position: relative;
+}
+
+.player-card--red  { border-color: #ff8080; background: #fff0f0; }
+.player-card--blue { border-color: #80a8ff; background: #f0f4ff; }
+
+.player-card.is-turn {
+  transform: scale(1.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border-color: #333;
+}
+
+.player-card__name {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+  color: #222;
+}
+
+.player-card__score {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111;
+}
+
+.player-card__team {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #777;
+  margin-top: 4px;
+}
+
+.you-badge {
+  font-size: 11px;
+  color: #667eea;
+  font-weight: 500;
+}
+
+.eliminated-badge {
+  margin-left: 6px;
+  font-size: 14px;
+  color: #a00;
+}
+
+/* ── Board ── */
 .board {
   display: inline-flex;
   flex-direction: column;
@@ -31,9 +94,7 @@
   margin: 20px auto;
 }
 
-.board-row {
-  display: flex;
-}
+.board-row { display: flex; }
 
 .cell {
   width: 36px;
@@ -55,14 +116,8 @@
   background: #c0c0c0;
   border-color: #ffffff #808080 #808080 #ffffff;
 }
-
-.cell--hidden:hover {
-  background: #d0d0d0;
-}
-
-.cell--hidden:active {
-  border-color: #808080 #ffffff #ffffff #808080;
-}
+.cell--hidden:hover { background: #d0d0d0; }
+.cell--hidden:active { border-color: #808080 #ffffff #ffffff #808080; }
 
 .cell--flagged {
   background: #c0c0c0;
@@ -75,10 +130,7 @@
   cursor: default;
 }
 
-.cell--mine {
-  background: #ff4444;
-  color: white;
-}
+.cell--mine { background: #ff4444; color: white; }
 
 .num--1 { color: #0000ff; }
 .num--2 { color: #008000; }
@@ -100,12 +152,6 @@
 }
 .toast--error { background: #ffe0e0; color: #a00; }
 .toast--warn  { background: #fff4d4; color: #8a6b00; }
-
-.turn-indicator {
-  margin: 10px 0;
-  font-weight: 600;
-  font-size: 15px;
-}
 
 .overlay {
   position: fixed;
@@ -129,7 +175,6 @@
   padding: 0;
   margin: 20px 0;
 }
-
 .overlay__results li {
   padding: 8px 0;
   border-bottom: 1px solid #eee;
@@ -146,13 +191,4 @@
   cursor: pointer;
   font-size: 15px;
 }
-
-.overlay__button:hover {
-  background: #5a67d8;
-}
-
-.game-page__error {
-  text-align: center;
-  padding: 60px 20px;
-  color: #a00;
-}
+.overlay__button:hover { background: #5a67d8; }

@@ -25,5 +25,5 @@ export interface RegisterCredentials {
   username: string;
   email: string;
   password: string;
-  slikaURL: string;
+  confirmPassword: string;
 }

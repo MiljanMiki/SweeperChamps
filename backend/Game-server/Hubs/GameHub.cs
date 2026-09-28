@@ -34,10 +34,6 @@ public class GameHub : Hub
         int.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? throw new HubException("Missing player id claim"));
 
-    /// <summary>
-    /// Client calls this once after connecting. Server finds the caller's active game,
-    /// joins them to its group, and sends them the full board state.
-    /// </summary>
     public async Task JoinGame()
     {
         var playerId = CurrentPlayerId;
@@ -51,11 +47,12 @@ public class GameHub : Hub
         game.Connections[playerId] = Context.ConnectionId;
         await Groups.AddToGroupAsync(Context.ConnectionId, game.GroupName);
 
-        // Send the full snapshot to the caller
         var snapshot = BuildSnapshot(game);
         await Clients.Caller.SendAsync(HubEvents.BoardState, snapshot);
 
-        // Tell others in the group that this player connected (or reconnected)
+        // Send score update too so the scoreboard renders immediately
+        await Clients.Group(game.GroupName).SendAsync(HubEvents.ScoreUpdate, BuildScoreList(game));
+
         await Clients.OthersInGroup(game.GroupName).SendAsync(HubEvents.PlayerConnected, playerId);
 
         _logger.LogInformation("Player {PlayerId} joined game {GameId}", playerId, game.GameId);
@@ -84,6 +81,9 @@ public class GameHub : Hub
             playerId,
             payload = result.BroadcastPayload
         });
+
+        // ── LIVE SCORES ── broadcast after every valid move
+        await Clients.Group(game.GroupName).SendAsync(HubEvents.ScoreUpdate, BuildScoreList(game));
 
         await _publisher.PublishMoveMadeAsync(new MoveMadeMessage
         {
@@ -127,11 +127,14 @@ public class GameHub : Hub
                 _logger.LogInformation("Player {PlayerId} disconnected from game {GameId}", playerId, game.GameId);
             }
         }
-        catch { /* user was never authenticated; ignore */ }
+        catch { }
 
         await base.OnDisconnectedAsync(exception);
     }
 
+    // ─────────────────────────────────────────────
+    // Snapshot builder — now includes usernames
+    // ─────────────────────────────────────────────
     private static BoardStateSnapshot BuildSnapshot(Models.GameInstance game)
     {
         var state = (MinesweeperGameState)game.BoardState;
@@ -144,14 +147,57 @@ public class GameHub : Hub
                 currentTurn = active[state.CurrentTurnPlayerIndex % active.Count].PlayerId;
         }
 
+        // Rebuild player DTOs from the runtime state so we get usernames from the state (source of truth)
+        var players = state.Players
+            .Select(p => new GamePlayerDto
+            {
+                PlayerId = p.PlayerId,
+                Username = p.Username,
+                TeamColor = p.TeamColor
+            })
+            .ToList();
+
         return new BoardStateSnapshot
         {
             GameId = game.GameId,
             Settings = game.Settings,
-            Players = game.Players,
+            Players = players,
             Cells = state.Board.ToSnapshot(),
             CurrentTurnPlayerId = currentTurn,
             IsGameOver = game.IsFinished,
         };
+    }
+
+    // ─────────────────────────────────────────────
+    // Live score list
+    // ─────────────────────────────────────────────
+    private static List<ScoreEntry> BuildScoreList(Models.GameInstance game)
+    {
+        var state = (MinesweeperGameState)game.BoardState;
+        return state.Players
+            .Select(p => new ScoreEntry
+            {
+                PlayerId = p.PlayerId,
+                Username = p.Username,
+                TeamColor = p.TeamColor.ToString(),
+                Score = p.Score,
+                IsEliminated = p.IsEliminated
+            })
+            .ToList();
+    }
+
+    public Task<bool> HasActiveGame()
+    {
+        var playerId = CurrentPlayerId;
+        var has = _gameStateManager.TryGetGameForPlayer(playerId, out _);
+        return Task.FromResult(has);
+    }
+    public class ScoreEntry
+    {
+        public int PlayerId { get; set; }
+        public string Username { get; set; } = "";
+        public string TeamColor { get; set; } = "";
+        public int Score { get; set; }
+        public bool IsEliminated { get; set; }
     }
 }

@@ -21,6 +21,7 @@ public class MinesweeperGameEngine : IGameEngine
             Players  = players.Select(p => new PlayerRuntimeState
             {
                 PlayerId  = p.PlayerId,
+                Username = p.Username,
                 TeamColor = p.TeamColor
             }).ToList()
         };

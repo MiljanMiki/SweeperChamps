@@ -8,10 +8,10 @@ namespace SC_GameServer.Services;
 
 public class GameResultProcessor
 {
-    private readonly IGameEngine          _gameEngine;
+    private readonly IGameEngine _gameEngine;
     private readonly IHubContext<GameHub> _hubContext;
-    private readonly IRabbitMqPublisher   _publisher;
-    private readonly IGameStateManager    _gameStateManager;
+    private readonly IRabbitMqPublisher _publisher;
+    private readonly IGameStateManager _gameStateManager;
     private readonly ILogger<GameResultProcessor> _logger;
 
     public GameResultProcessor(
@@ -21,11 +21,11 @@ public class GameResultProcessor
         IGameStateManager gameStateManager,
         ILogger<GameResultProcessor> logger)
     {
-        _gameEngine       = gameEngine;
-        _hubContext       = hubContext;
-        _publisher        = publisher;
+        _gameEngine = gameEngine;
+        _hubContext = hubContext;
+        _publisher = publisher;
         _gameStateManager = gameStateManager;
-        _logger           = logger;
+        _logger = logger;
     }
 
     public void ScheduleTurnTimeout(GameInstance game, int playerId, int seconds)
@@ -56,9 +56,9 @@ public class GameResultProcessor
 
             await _publisher.PublishMoveMadeAsync(new MoveMadeMessage
             {
-                GameId      = game.GameId,
-                PlayerId    = playerId,
-                Timestamp   = DateTime.UtcNow,
+                GameId = game.GameId,
+                PlayerId = playerId,
+                Timestamp = DateTime.UtcNow,
                 MoveLogJson = result.MoveLogJson
             });
 
@@ -72,9 +72,9 @@ public class GameResultProcessor
 
                 await _publisher.PublishGameFinishedAsync(new GameFinishedMessage
                 {
-                    GameId  = game.GameId,
+                    GameId = game.GameId,
                     EndTime = DateTime.UtcNow,
-                    Status  = GameStatus.Finished,
+                    Status = GameStatus.Finished,
                     Results = result.FinalResults ?? new()
                 });
 

@@ -99,4 +99,10 @@ app.UseAuthorization();
 
 app.MapHub<GameHub>("/hubs/game");
 
+app.MapGet("/internal/active-game/{playerId:int}", (int playerId, IGameStateManager mgr) =>
+{
+    var has = mgr.TryGetGameForPlayer(playerId, out _);
+    return Results.Ok(new { hasActiveGame = has });
+});
+
 app.Run();

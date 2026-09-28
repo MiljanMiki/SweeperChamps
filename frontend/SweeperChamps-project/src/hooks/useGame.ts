@@ -6,11 +6,15 @@ import type {
   MoveMadeEvent,
   GameOverResult,
   BoardStateSnapshot,
+  GamePlayerDto,
+  ScoreEntry,
 } from "../types/game";
 
 interface UseGameResult {
   board: CellView[][];
   settings: BoardStateSnapshot["settings"] | null;
+  players: GamePlayerDto[];
+  scores: ScoreEntry[];
   myPlayerId: number;
   connected: boolean;
   gameOver: boolean;
@@ -20,14 +24,14 @@ interface UseGameResult {
   timeoutMessage: string | null;
   revealCell: (x: number, y: number) => Promise<void>;
   flagCell: (x: number, y: number) => Promise<void>;
+  unflagCell: (x: number, y: number) => Promise<void>;
 }
 
-export function useGame(
-  token: string,
-  myPlayerId: number
-): UseGameResult {
+export function useGame(token: string, myPlayerId: number): UseGameResult {
   const [board, setBoard] = useState<CellView[][]>([]);
   const [settings, setSettings] = useState<BoardStateSnapshot["settings"] | null>(null);
+  const [players, setPlayers] = useState<GamePlayerDto[]>([]);
+  const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [connected, setConnected] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [results, setResults] = useState<GameOverResult[] | null>(null);
@@ -43,14 +47,10 @@ export function useGame(
     const conn = buildGameConnection(token);
     connRef.current = conn;
 
-    // ── Snapshot from server ──
     conn.on("BoardState", (snap: BoardStateSnapshot) => {
-      const rows = snap.settings.height;
-      const cols = snap.settings.width;
-      const grid: CellView[][] = Array.from({ length: rows }, (_, y) =>
-        Array.from({ length: cols }, (_, x) => ({
-          x,
-          y,
+      const grid: CellView[][] = Array.from({ length: snap.settings.height }, (_, y) =>
+        Array.from({ length: snap.settings.width }, (_, x) => ({
+          x, y,
           state: "Hidden",
           adjacentMineCount: 0,
           isMine: false,
@@ -69,9 +69,14 @@ export function useGame(
       }
       setBoard(grid);
       setSettings(snap.settings);
+      setPlayers(snap.players ?? []);
       setCurrentTurnPlayerId(snap.currentTurnPlayerId ?? null);
       setGameOver(!!snap.isGameOver);
       if (snap.finalResults) setResults(snap.finalResults);
+    });
+
+    conn.on("ScoreUpdate", (update: ScoreEntry[]) => {
+      setScores(update);
     });
 
     conn.on("MoveMade", (evt: MoveMadeEvent) => {
@@ -126,9 +131,7 @@ export function useGame(
         await conn.start();
         if (cancelled) { await conn.stop(); return; }
         setConnected(true);
-        console.log("[Game] Connected");
         await conn.invoke("JoinGame");
-        console.log("[Game] JoinGame invoked");
       } catch (err) {
         console.error("[Game] Connection failed:", err);
       }
@@ -137,7 +140,7 @@ export function useGame(
 
     return () => {
       cancelled = true;
-      ["BoardState","MoveMade","MoveRejected","TurnChanged","PlayerTimeout","PlayerConnected","GameOver"]
+      ["BoardState","ScoreUpdate","MoveMade","MoveRejected","TurnChanged","PlayerTimeout","PlayerConnected","GameOver"]
         .forEach((e) => conn.off(e));
       stopGameConnection();
       setConnected(false);
@@ -147,27 +150,28 @@ export function useGame(
   const revealCell = useCallback(async (x: number, y: number) => {
     const conn = connRef.current;
     if (!conn || !connected || gameOver) return;
-    try {
-      await conn.invoke("MakeMove", { actionType: "Reveal", x, y });
-    } catch (err) {
-      console.error("[Game] Reveal failed:", err);
-    }
+    try { await conn.invoke("MakeMove", { actionType: "Reveal", x, y }); }
+    catch (err) { console.error("[Game] Reveal failed:", err); }
   }, [connected, gameOver]);
 
   const flagCell = useCallback(async (x: number, y: number) => {
     const conn = connRef.current;
     if (!conn || !connected || gameOver) return;
-    try {
-      await conn.invoke("MakeMove", { actionType: "Flag", x, y });
-    } catch (err) {
-      console.error("[Game] Flag failed:", err);
-    }
+    try { await conn.invoke("MakeMove", { actionType: "Flag", x, y }); }
+    catch (err) { console.error("[Game] Flag failed:", err); }
+  }, [connected, gameOver]);
+
+  const unflagCell = useCallback(async (x: number, y: number) => {
+    const conn = connRef.current;
+    if (!conn || !connected || gameOver) return;
+    try { await conn.invoke("MakeMove", { actionType: "Unflag", x, y }); }
+    catch (err) { console.error("[Game] Unflag failed:", err); }
   }, [connected, gameOver]);
 
   return {
-    board, settings, myPlayerId,
+    board, settings, players, scores, myPlayerId,
     connected, gameOver, results, rejection,
     currentTurnPlayerId, timeoutMessage,
-    revealCell, flagCell,
+    revealCell, flagCell, unflagCell,
   };
 }

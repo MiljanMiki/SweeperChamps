@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SC_Backend.DataContext;
+using SC.Api.Services;
 using SC.Domain.DataModels;
 using SC.Domain.DTOs.GamePlayers;
 using SC.Domain.DTOs.Games;
 using SC.Domain.Repositories.AsyncInterfaces;
+using SC_Backend.DataContext;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,10 +21,14 @@ namespace SC.Api.Controllers
     public class GamesController : ControllerBase
     {
         private readonly IGameRepository _gameRepository;
+        private readonly IGameServerClient _gameServerClient;
 
-        public GamesController(IGameRepository gameRepository)
+        public GamesController(
+    IGameRepository gameRepository,
+    IGameServerClient gameServerClient)   // ← dodaj
         {
             _gameRepository = gameRepository;
+            _gameServerClient = gameServerClient;
         }
 
         #region CRUD
@@ -198,7 +204,18 @@ namespace SC.Api.Controllers
             }
             
         }
+        [HttpGet("active")]
+        [Authorize]
+        public async Task<IActionResult> HasActiveGame()
+        {
+            var playerIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                              ?? User.Identity?.Name;
+            if (string.IsNullOrEmpty(playerIdStr) || !int.TryParse(playerIdStr, out var playerId))
+                return Unauthorized();
 
+            var has = await _gameServerClient.HasActiveGameAsync(playerId);
+            return Ok(new { hasActiveGame = has, gameId = has ? (int?)null : null });
+        }
         [HttpGet("duration/{durationSeconds}")]
         public async Task<ActionResult<IEnumerable<GameDto>>> FilterByDurationAsync(int durationSeconds, bool longer)
         {

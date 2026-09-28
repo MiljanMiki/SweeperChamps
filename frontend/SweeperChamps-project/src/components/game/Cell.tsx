@@ -5,12 +5,18 @@ interface CellProps {
   cell: CellView;
   onReveal: (x: number, y: number) => void;
   onFlag: (x: number, y: number) => void;
+  onUnflag: (x: number, y: number) => void;
 }
 
-const Cell: React.FC<CellProps> = ({ cell, onReveal, onFlag }) => {
+const Cell: React.FC<CellProps> = ({ cell, onReveal, onFlag, onUnflag }) => {
+  // Right-click behavior:
+  //  Hidden → Flag
+  //  Flagged → Unflag
+  //  Revealed → do nothing
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (cell.state !== "Revealed") onFlag(cell.x, cell.y);
+    if (cell.state === "Hidden")  onFlag(cell.x, cell.y);
+    if (cell.state === "Flagged") onUnflag(cell.x, cell.y);
   };
 
   if (cell.state === "Hidden") {
@@ -28,8 +34,8 @@ const Cell: React.FC<CellProps> = ({ cell, onReveal, onFlag }) => {
     return (
       <button
         className="cell cell--flagged"
-        onClick={() => onFlag(cell.x, cell.y)}
-        onContextMenu={handleContextMenu}
+        onClick={() => onUnflag(cell.x, cell.y)}       // left-click also unflags
+        onContextMenu={handleContextMenu}              // right-click also unflags
       >
         🚩
       </button>

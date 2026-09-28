@@ -14,20 +14,21 @@
         public int NumberOfMines { get; set; }
         public int? StartTimeSeconds { get; set; }
         public int TeamSize { get; set; }
-        public int WinCondition { get; set; }
+        public string WinCondition { get; set; } = "Race";
         public bool HasPowerUps { get; set; }
     }
 
     public class GamePlayerDto
     {
         public int PlayerId { get; set; }
-        public int TeamColor { get; set; }
+        public string Username { get; set; } = "";     // ← new
+        public string TeamColor { get; set; } = "Red";
     }
 
     public interface IMatchmakingClient
     {
         Task MatchmakingStarted();
-        Task MatchFound();       // ← no payload needed anymore
+        Task MatchFound(MatchFoundPayload payload);
         Task Error(string message);
     }
 }

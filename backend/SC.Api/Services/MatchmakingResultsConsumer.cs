@@ -87,14 +87,14 @@ namespace SC.Api.Services
 
                     if (matchEvent != null)
                     {
-                        // 1. Load the full game from the DB
+                        // ── 1. Load the game + settings + players from DB ──
                         using var scope = _scopeFactory.CreateScope();
                         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
                         var game = await db.Games
                             .Include(g => g.GameSettings)
                             .Include(g => g.GamePlayers)
-                            .FirstOrDefaultAsync(g => g.GamesId == matchEvent.GameId);
+                            .FirstOrDefaultAsync(g => g.GamesId == matchEvent.GameId, stoppingToken);
 
                         if (game == null)
                         {
@@ -103,7 +103,7 @@ namespace SC.Api.Services
                             return;
                         }
 
-                        // 2. Build the payload for both the hub AND the game server
+                        // ── 2. Build settings DTO ──
                         var settingsDto = new GameSettingsDto
                         {
                             Width = game.GameSettings.Width,
@@ -111,19 +111,29 @@ namespace SC.Api.Services
                             NumberOfMines = game.GameSettings.NumberOfMines,
                             StartTimeSeconds = game.GameSettings.StartTimeSeconds,
                             TeamSize = game.GameSettings.TeamSize,
-                            WinCondition = (int)game.GameSettings.WinCondition,
+                            WinCondition = game.GameSettings.WinCondition.ToString(),
                             HasPowerUps = game.GameSettings.HasPowerUps
                         };
 
+                        // ── 3. Look up usernames for all players in one query ──
+                        var playerIds = game.GamePlayers.Select(gp => gp.PlayerId).ToList();
+                        var usernames = await db.Users
+                            .Where(u => playerIds.Contains(u.UsersId))
+                            .ToDictionaryAsync(u => u.UsersId, u => u.Username, stoppingToken);
+
+                        // ── 4. Build players DTO with usernames ──
                         var playersDto = game.GamePlayers
                             .Select(gp => new GamePlayerDto
                             {
                                 PlayerId = gp.PlayerId,
-                                TeamColor = (int)gp.TeamColor
+                                Username = usernames.TryGetValue(gp.PlayerId, out var name)
+                                            ? name
+                                            : $"Player {gp.PlayerId}",
+                                TeamColor = gp.TeamColor.ToString()
                             })
                             .ToList();
 
-                        // 3. Publish to GameServer
+                        // ── 5. Publish to GameServer ──
                         await _gameCreatedPublisher.PublishAsync(new GameCreatedMessage
                         {
                             GameId = game.GamesId,
@@ -131,10 +141,15 @@ namespace SC.Api.Services
                             Players = playersDto
                         });
 
-                        // 4. Notify the browsers via SignalR
+                        // ── 6. Notify browsers via SignalR ──
                         await _hubContext.Clients
                             .Users(matchEvent.UserIds)
-                            .MatchFound();
+                            .MatchFound(new MatchFoundPayload
+                            {
+                                GameId = game.GamesId,
+                                GameSettings = settingsDto,
+                                Players = playersDto
+                            });
 
                         _logger.LogInformation(
                             "Notified clients and published game.created for Game {GameId}",
@@ -156,7 +171,7 @@ namespace SC.Api.Services
                 consumer,
                 cancellationToken: stoppingToken);
 
-            _logger.LogInformation("MatchmakingResultsConsumer started.");
+            _logger.LogInformation("MatchmakingResultsConsumer started, listening on 'match.found'.");
 
             while (!stoppingToken.IsCancellationRequested)
             {

@@ -39,6 +39,7 @@ export interface GameSettingsDto {
 
 export interface GamePlayerDto {
   playerId: number;
+  username: string;         // ← new
   teamColor: string;
 }
 
@@ -59,4 +60,12 @@ export interface BoardStateSnapshot {
   currentTurnPlayerId?: number | null;
   isGameOver: boolean;
   finalResults?: GameOverResult[] | null;
+}
+
+export interface ScoreEntry {              // ← new
+  playerId: number;
+  username: string;
+  teamColor: string;
+  score: number;
+  isEliminated: boolean;
 }

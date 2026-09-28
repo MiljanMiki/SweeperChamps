@@ -1,6 +1,7 @@
 ﻿using RabbitMQ.Client;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SC.Api.Hubs.Interfaces;
 
 namespace SC.Api.Services
@@ -19,8 +20,10 @@ namespace SC.Api.Services
 
     public class GameCreatedPublisher : IGameCreatedPublisher
     {
-        private static readonly JsonSerializerOptions JsonOptions =
-            new(JsonSerializerDefaults.Web);
+        private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
 
         private readonly IConnection _connection;
         private readonly ILogger<GameCreatedPublisher> _logger;
