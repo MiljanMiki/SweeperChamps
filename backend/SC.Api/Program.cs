@@ -63,16 +63,29 @@ builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IMatchmakingPublisher, RabbitMqMatchmakingPublisher>();
 
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+//DI for repos
+builder.Services.AddScoped<IGamePlayerRepository, GamePlayerRepository>();
+builder.Services.AddScoped<IGameRepository, GameRepository>();
 builder.Services.AddScoped<IGameSettingRepository, GameSettingRepository>();
+builder.Services.AddScoped<IMovesRepository,MovesRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserStatsRepository, UserStatsRepository>();
 
-builder.Services.AddScoped<IGameSettingsService, GameSettingsService>();
+//DI for services
+builder.Services.AddScoped<IGameService,GameService>();
+builder.Services.AddScoped<IGamePlayerService,GamePlayerService>();
+builder.Services.AddScoped<IGameSettingsService,GameSettingsService>();
+builder.Services.AddScoped<IUserStatsService,UserStatsService>();
+
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMatchmakingService, MatchmakingService>();
+
+builder.Services.AddScoped<IGameCompletionOrchestrator,GameCompletionOrchestrator>();
+
 
 builder.Services.AddHostedService<MatchmakingResultsConsumer>();
 
 
-builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddLogging();
 
 // CORS - allow frontend dev ports
