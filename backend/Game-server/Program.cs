@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---- CORS ----
+// ── CORS ──
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -28,7 +28,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ---- SignalR ----
+// ── SignalR ──
 builder.Services.AddSignalR()
     .AddJsonProtocol(options =>
     {
@@ -38,7 +38,7 @@ builder.Services.AddSignalR()
         };
     });
 
-// ---- Auth ----
+// ── Auth ──
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -68,7 +68,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ---- RabbitMQ ----
+// ── RabbitMQ ──
 builder.Services.AddSingleton<IConnection>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -85,7 +85,7 @@ builder.Services.AddSingleton<IConnection>(sp =>
 builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
 builder.Services.AddHostedService<GameCreatedConsumer>();
 
-// ---- Game ----
+// ── Game ──
 builder.Services.AddSingleton<IGameStateManager, GameStateManager>();
 builder.Services.AddSingleton<IGameEngine, MinesweeperGameEngine>();
 builder.Services.AddSingleton<GameResultProcessor>();
@@ -93,16 +93,23 @@ builder.Services.AddSingleton<GameResultProcessor>();
 var app = builder.Build();
 
 app.UseCors("AllowFrontend");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHub<GameHub>("/hubs/game");
 
+// ── Internal endpoint used by the API to resolve a user's active game ──
 app.MapGet("/internal/active-game/{playerId:int}", (int playerId, IGameStateManager mgr) =>
 {
-    var has = mgr.TryGetGameForPlayer(playerId, out _);
-    return Results.Ok(new { hasActiveGame = has });
+    if (mgr.TryGetGameForPlayer(playerId, out var game) && game is not null)
+    {
+        return Results.Ok(new
+        {
+            hasActiveGame = true,
+            gameId = game.GameId
+        });
+    }
+    return Results.Ok(new { hasActiveGame = false, gameId = (int?)null });
 });
 
 app.Run();

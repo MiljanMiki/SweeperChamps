@@ -1,3 +1,4 @@
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
@@ -6,6 +7,7 @@ import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import Lobby from "./components/lobby/Lobby";
 import GamePage from "./components/game/GamePage";
+import WatchByUsernamePage from "./components/game/WatchByUsernamePage";
 import "./App.css";
 
 function App() {
@@ -31,6 +33,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <GamePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/game/:username"
+                element={
+                  <ProtectedRoute>
+                    <WatchByUsernamePage />
                   </ProtectedRoute>
                 }
               />

@@ -101,6 +101,19 @@ builder.Services.AddSingleton<IConnection>(sp =>
     return factory.CreateConnectionAsync().GetAwaiter().GetResult();
 });
 
+// ── HTTP client to GameServer ──
+builder.Services.AddHttpClient<IGameServerClient, GameServerClient>(client =>
+{
+    var gameServerUrl = builder.Configuration["GameServer:BaseUrl"] ?? "https://localhost:7230";
+    client.BaseAddress = new Uri(gameServerUrl);
+    client.Timeout = TimeSpan.FromSeconds(3);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    // Accept the dev self-signed certificate
+    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+});
+
 // ── Publishers ──
 builder.Services.AddSingleton<IMatchmakingPublisher, RabbitMqMatchmakingPublisher>();
 builder.Services.AddSingleton<IGameCreatedPublisher, GameCreatedPublisher>();
@@ -129,7 +142,7 @@ builder.Services.AddScoped<IGameCompletionOrchestrator, GameCompletionOrchestrat
 
 builder.Services.AddLogging();
 
-// CORS
+// ── CORS ──
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -147,16 +160,6 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddHttpClient<IGameServerClient, GameServerClient>(client =>
-{
-    client.BaseAddress = new Uri("https://localhost:7230"); // tvoj GameServer URL
-    client.Timeout = TimeSpan.FromSeconds(3);
-})
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    // Za self-signed dev cert
-    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-});
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebTemplate API", Version = "v1" });

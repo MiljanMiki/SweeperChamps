@@ -4,7 +4,13 @@ namespace SC.Api.Services
 {
     public interface IGameServerClient
     {
-        Task<bool> HasActiveGameAsync(int playerId);
+        Task<ActiveGameInfo?> GetActiveGameForPlayerAsync(int playerId);
+    }
+
+    public class ActiveGameInfo
+    {
+        public bool HasActiveGame { get; set; }
+        public int? GameId { get; set; }
     }
 
     public class GameServerClient : IGameServerClient
@@ -18,25 +24,24 @@ namespace SC.Api.Services
             _logger = logger;
         }
 
-        public async Task<bool> HasActiveGameAsync(int playerId)
+        public async Task<ActiveGameInfo?> GetActiveGameForPlayerAsync(int playerId)
         {
             try
             {
                 var response = await _http.GetAsync($"/internal/active-game/{playerId}");
-                if (!response.IsSuccessStatusCode) return false;
-                var result = await response.Content.ReadFromJsonAsync<HasActiveGameResponse>();
-                return result?.HasActiveGame ?? false;
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("GameServer returned {Status} for player {PlayerId}",
+                        response.StatusCode, playerId);
+                    return null;
+                }
+                return await response.Content.ReadFromJsonAsync<ActiveGameInfo>();
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "GameServer not reachable, assuming no active game");
-                return false;
+                _logger.LogWarning(ex, "GameServer unreachable");
+                return null;
             }
-        }
-
-        private class HasActiveGameResponse
-        {
-            public bool HasActiveGame { get; set; }
         }
     }
 }

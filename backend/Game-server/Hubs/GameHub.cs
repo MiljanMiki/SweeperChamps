@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using SC_GameServer.GameEngine;
 using SC_GameServer.Messaging;
+using SC_GameServer.Models;
 using SC_GameServer.Services;
 
 namespace SC_GameServer.Hubs;
@@ -34,6 +35,9 @@ public class GameHub : Hub
         int.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? throw new HubException("Missing player id claim"));
 
+    // ─────────────────────────────────────────
+    // Player joins their own game (the one they're a member of)
+    // ─────────────────────────────────────────
     public async Task JoinGame()
     {
         var playerId = CurrentPlayerId;
@@ -49,21 +53,49 @@ public class GameHub : Hub
 
         var snapshot = BuildSnapshot(game);
         await Clients.Caller.SendAsync(HubEvents.BoardState, snapshot);
-
-        // Send score update too so the scoreboard renders immediately
         await Clients.Group(game.GroupName).SendAsync(HubEvents.ScoreUpdate, BuildScoreList(game));
-
         await Clients.OthersInGroup(game.GroupName).SendAsync(HubEvents.PlayerConnected, playerId);
 
         _logger.LogInformation("Player {PlayerId} joined game {GameId}", playerId, game.GameId);
     }
 
+    // ─────────────────────────────────────────
+    // Spectator joins any game they can specify by id
+    // ─────────────────────────────────────────
+    public async Task JoinGameAsSpectator(int gameId)
+    {
+        var callerId = CurrentPlayerId;
+
+        if (!_gameStateManager.TryGetGame(gameId, out var game) || game is null)
+        {
+            await Clients.Caller.SendAsync(HubEvents.MoveRejected, "Game not found or not active.");
+            return;
+        }
+
+        // Add to SignalR group — spectators receive all broadcasts but cannot send moves
+        await Groups.AddToGroupAsync(Context.ConnectionId, game.GroupName);
+
+        var snapshot = BuildSnapshot(game);
+        await Clients.Caller.SendAsync(HubEvents.BoardState, snapshot);
+        await Clients.Caller.SendAsync(HubEvents.ScoreUpdate, BuildScoreList(game));
+        await Clients.Caller.SendAsync(HubEvents.SpectatorJoined, new
+        {
+            gameId = game.GameId,
+            spectatorPlayerId = callerId
+        });
+
+        _logger.LogInformation("Spectator {CallerId} joined game {GameId}", callerId, gameId);
+    }
+
+    // ─────────────────────────────────────────
+    // Make a move (only real players; spectators get rejected)
+    // ─────────────────────────────────────────
     public async Task MakeMove(MoveRequest move)
     {
         var playerId = CurrentPlayerId;
 
         if (!_gameStateManager.TryGetGameForPlayer(playerId, out var game) || game is null)
-            throw new HubException("You are not in an active game");
+            throw new HubException("You are not a player in an active game");
 
         if (game.IsFinished)
             throw new HubException("Game has already ended");
@@ -82,7 +114,6 @@ public class GameHub : Hub
             payload = result.BroadcastPayload
         });
 
-        // ── LIVE SCORES ── broadcast after every valid move
         await Clients.Group(game.GroupName).SendAsync(HubEvents.ScoreUpdate, BuildScoreList(game));
 
         await _publisher.PublishMoveMadeAsync(new MoveMadeMessage
@@ -132,10 +163,10 @@ public class GameHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    // ─────────────────────────────────────────────
-    // Snapshot builder — now includes usernames
-    // ─────────────────────────────────────────────
-    private static BoardStateSnapshot BuildSnapshot(Models.GameInstance game)
+    // ─────────────────────────────────────────
+    // Builders
+    // ─────────────────────────────────────────
+    private static BoardStateSnapshot BuildSnapshot(GameInstance game)
     {
         var state = (MinesweeperGameState)game.BoardState;
 
@@ -147,7 +178,6 @@ public class GameHub : Hub
                 currentTurn = active[state.CurrentTurnPlayerIndex % active.Count].PlayerId;
         }
 
-        // Rebuild player DTOs from the runtime state so we get usernames from the state (source of truth)
         var players = state.Players
             .Select(p => new GamePlayerDto
             {
@@ -168,10 +198,7 @@ public class GameHub : Hub
         };
     }
 
-    // ─────────────────────────────────────────────
-    // Live score list
-    // ─────────────────────────────────────────────
-    private static List<ScoreEntry> BuildScoreList(Models.GameInstance game)
+    private static List<ScoreEntry> BuildScoreList(GameInstance game)
     {
         var state = (MinesweeperGameState)game.BoardState;
         return state.Players
@@ -186,12 +213,6 @@ public class GameHub : Hub
             .ToList();
     }
 
-    public Task<bool> HasActiveGame()
-    {
-        var playerId = CurrentPlayerId;
-        var has = _gameStateManager.TryGetGameForPlayer(playerId, out _);
-        return Task.FromResult(has);
-    }
     public class ScoreEntry
     {
         public int PlayerId { get; set; }

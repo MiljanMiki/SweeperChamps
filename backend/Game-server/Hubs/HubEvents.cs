@@ -9,5 +9,6 @@ public static class HubEvents
     public const string PlayerConnected = "PlayerConnected";
     public const string TurnChanged = "TurnChanged";
     public const string PlayerTimeout = "PlayerTimeout";
-    public const string ScoreUpdate = "ScoreUpdate";   // ← new
+    public const string ScoreUpdate = "ScoreUpdate";
+    public const string SpectatorJoined = "SpectatorJoined";
 }
