@@ -10,6 +10,7 @@ interface AuthContextType {
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,41 +19,88 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+// ── JWT decoder (payload je base64url) ──
+function decodeJwt(token: string): Record<string, any> {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return {};
+    // base64url → base64
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '=');
+    const json = decodeURIComponent(
+      atob(padded)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
+// Role claim name emitted by ASP.NET Core JWT
+const ROLE_CLAIM =
+  'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
+const NAME_CLAIM =
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
+const NAMEID_CLAIM =
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
+const EMAIL_CLAIM =
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress';
+
+function roleFromJwt(token: string): string {
+  const decoded = decodeJwt(token);
+  return (
+    decoded[ROLE_CLAIM] ??
+    decoded.role ??
+    decoded.roles ??
+    'User'
+  );
+}
+
+function userFromJwt(token: string, fallbackUsername: string): User {
+  const decoded = decodeJwt(token);
+  return {
+    id: String(decoded[NAMEID_CLAIM] ?? decoded.nameid ?? decoded.sub ?? fallbackUsername),
+    username: String(decoded[NAME_CLAIM] ?? decoded.unique_name ?? fallbackUsername),
+    email: String(decoded[EMAIL_CLAIM] ?? decoded.email ?? ''),
+    role: roleFromJwt(token),
+  };
+}
+
 // Helper to extract user + token from various response shapes
 function parseAuthResponse(response: AuthResponse, fallbackUsername: string): { user: User; token: string } {
   // Case 1: { user: {...}, token: "..." }
   if (response.user && response.token) {
-    return { user: response.user, token: response.token };
-  }
-
-  // Case 2: Response IS the user, and token might be in a header we don't have
-  if (response.username) {
-    const user: User = {
-      id: response.id || response.username,
-      username: response.username,
-      email: response.email || '',
-      slikaURL: response.slikaURL,
-    };
-    return { user, token: response.token || `token-${Date.now()}` };
-  }
-
-  // Case 3: Response is just a token string (already wrapped by api service)
-  if (response.token && !response.user) {
-    const user: User = {
-      id: fallbackUsername,
-      username: fallbackUsername,
-      email: '',
+    // Uvek obogati user-a sa role iz JWT (jer backend user DTO ne mora da nosi role)
+    const user = {
+      ...response.user,
+      role: response.user.role || roleFromJwt(response.token),
     };
     return { user, token: response.token };
   }
 
-  // Fallback: use the username we sent
+  // Case 2: Response IS the user, and token might be in a header we don't have
+  if (response.username && response.token) {
+    const user = userFromJwt(response.token, response.username);
+    return { user, token: response.token };
+  }
+
+  // Case 3: Response is just a token string (already wrapped by api service)
+  if (response.token && !response.user) {
+    const user = userFromJwt(response.token, fallbackUsername);
+    return { user, token: response.token };
+  }
+
+  // Fallback — nema tokena, ali imamo username
   const user: User = {
     id: fallbackUsername,
     username: fallbackUsername,
     email: '',
+    role: 'User',
   };
-  return { user, token: `token-${Date.now()}` };
+  return { user, token: '' };
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -65,7 +113,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     if (token && storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        // Uvek re-izvuci role iz tokena (u slučaju da je stari user bez role)
+        const role = roleFromJwt(token);
+        setUser({ ...parsed, role });
       } catch {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -78,7 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     try {
       const response = await authService.login(credentials);
-      console.log('Login response:', response); // Debug log
+      console.log('Login response:', response);
 
       const { user: parsedUser, token } = parseAuthResponse(response, credentials.username);
 
@@ -94,10 +145,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     try {
       const response = await authService.register(credentials);
-      console.log('Register response:', response); // Debug log
+      console.log('Register response:', response);
 
-      // After successful registration, automatically log in
-      // since most backends don't return a token on register
       try {
         const loginResponse = await authService.login({
           username: credentials.username,
@@ -109,11 +158,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(parsedUser));
       } catch {
-        // If auto-login fails, still use register response
         const { user: parsedUser, token } = parseAuthResponse(response, credentials.username);
         setUser(parsedUser);
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(parsedUser));
+        if (token) {
+          localStorage.setItem('token', token);
+          localStorage.setItem('user', JSON.stringify(parsedUser));
+        }
       }
     } finally {
       setLoading(false);
@@ -133,6 +183,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!user,
+    isAdmin: user?.role === 'Admin',
   };
 
   return React.createElement(AuthContext.Provider, { value }, children);

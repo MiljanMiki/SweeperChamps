@@ -8,6 +8,7 @@ public interface IGameStateManager
     void AddGame(GameInstance instance);
     bool TryGetGame(int gameId, out GameInstance? instance);
     bool TryGetGameForPlayer(int playerId, out GameInstance? instance);
+    IEnumerable<GameInstance> GetAllGames();
     void RemoveGame(int gameId);
 }
 
@@ -32,6 +33,8 @@ public class GameStateManager : IGameStateManager
         if (!_playerToGame.TryGetValue(playerId, out var gameId)) return false;
         return _games.TryGetValue(gameId, out instance);
     }
+
+    public IEnumerable<GameInstance> GetAllGames() => _games.Values;
 
     public void RemoveGame(int gameId)
     {

@@ -116,3 +116,15 @@
 .lobby__button--reconnect:hover {
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
 }
+.lobby__profile-link {
+  color: #667eea;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s;
+}
+
+.lobby__profile-link:hover {
+  text-decoration-color: #667eea;
+}

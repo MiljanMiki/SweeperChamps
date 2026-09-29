@@ -335,7 +335,7 @@ namespace SC.Api.Controllers
         }
 
         [HttpGet("match-history")]
-        public async Task<ActionResult<IEnumerable<MatchHistoryDto>>> GetUserMatchHistoryAsync(MatchHistoryRequestDto dto)
+        public async Task<ActionResult<IEnumerable<MatchHistoryDto>>> GetUserMatchHistoryAsync([FromQuery] MatchHistoryRequestDto dto)
         {
             if (dto == null)
                 return BadRequest("DTO is null");
@@ -364,7 +364,7 @@ namespace SC.Api.Controllers
             return Ok(dtos);
         }
 
-        
+
         [HttpPut("results")]
         //IDs that do not map to any user will be skipped! 
         public async Task<IActionResult> UpdatePlayerResultsAsync(IEnumerable<PlayerStatsRequestDto> finalPlayerStats)

@@ -9,6 +9,10 @@ import Lobby from "./components/lobby/Lobby";
 import GamePage from "./components/game/GamePage";
 import WatchByUsernamePage from "./components/game/WatchByUsernamePage";
 import "./App.css";
+import AdminPage from "./components/admin/AdminPage";
+import ProfilePage from "./components/profile/ProfilePage";
+
+
 
 function App() {
   return (
@@ -25,6 +29,22 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Lobby />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile/:username"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminPage />
                   </ProtectedRoute>
                 }
               />

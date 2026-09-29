@@ -110,7 +110,7 @@ namespace SC_Backend.Repositories.AsyncImplementations
                         .Include(gp => gp.Game)
                         .Where(gp => gp.PlayerId == userId && gp.Game.EndTime != null) // Only finished games
                         .OrderByDescending(gp => gp.Game.EndTime)
-                        .Skip((page - 1) * pageSize)
+                        .Skip(page * pageSize)
                         .Take(pageSize)
                         .ToListAsync();
         }

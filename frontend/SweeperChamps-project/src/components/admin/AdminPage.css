@@ -1,0 +1,115 @@
+.admin-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+.admin-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.admin-page__header h1 {
+  margin: 0;
+}
+
+.admin-page__meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #555;
+}
+
+.admin-page__refresh {
+  color: #888;
+}
+
+.admin-page__error {
+  background: #ffe0e0;
+  color: #a00;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.admin-page__empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #888;
+  font-size: 16px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.admin-table thead {
+  background: #f4f4f8;
+}
+
+.admin-table th {
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #444;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.admin-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table__players {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-table__players li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.team-dot--red { background: #e53935; }
+.team-dot--blue { background: #1e88e5; }
+
+.admin-table__watch {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.admin-table__watch:hover {
+  background: #5a67d8;
+}

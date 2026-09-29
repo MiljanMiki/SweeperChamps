@@ -1,19 +1,17 @@
-// src/types/index.ts
 export interface User {
   id: string;
   username: string;
   email: string;
-  slikaURL?: string;
+  role: string;   // "Admin" | "User"
 }
 
 export interface AuthResponse {
   user?: User;
   token?: string;
-  // Sometimes backend returns these directly
   id?: string;
   username?: string;
   email?: string;
-  slikaURL?: string;
+  role?: string;
 }
 
 export interface LoginCredentials {

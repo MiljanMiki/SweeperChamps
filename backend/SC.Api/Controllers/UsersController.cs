@@ -2,10 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Xml;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using SC_Backend.DataContext;
 using SC.Domain.DataModels;
@@ -33,31 +30,53 @@ namespace SC.Api.Controllers
             return Ok(list.Select(MapToDto).ToList());
         }
 
+        // ⬇️ DODATO: by-username MORA biti pre "{id:int}" da ne bi bilo konflikta
+        // GET: api/Users/by-username/jakov1
+        [HttpGet("by-username/{username}")]
+        public async Task<IActionResult> GetUserByUsernameAsync(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return BadRequest("Username is required.");
+
+            var user = await _userRepository.GetUserByUsernameAsync(username);
+            if (user == null)
+                return NotFound($"User '{username}' was not found.");
+
+            return Ok(new
+            {
+                usersId = user.UsersId,
+                username = user.Username,
+                email = user.Email,
+                datecreated = user.Datecreated,   // DateOnly → "2026-09-29"
+                elo = user.Elo ?? 0,
+                userRole = user.UserRole.ToString()
+            });
+        }
+
+        // ⬇️ IZMENJENO: :int constraint
         // GET: api/Users/5
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<UserDTO>> GetUserAsync(int id)
         {
-            if(id<=0)
+            if (id <= 0)
                 return BadRequest("ID cannot be negative or 0.");
 
             var user = await _userRepository.GetAsync(id);
 
             if (user == null)
-            {
                 return NotFound($"{nameof(User)} with the ID {id} was not found.");
-            }
 
             return Ok(MapToDto(user));
         }
 
+        // ⬇️ IZMENJENO: :int constraint
         // PUT: api/Users/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
+        [HttpPut("{id:int}")]
         public async Task<IActionResult> PutUserAsync(int id, UserUpdateDTO dto)
         {
             if (id <= 0)
                 return BadRequest("ID cannot be negative or 0.");
-            if(dto == null)
+            if (dto == null)
                 return BadRequest("DTO is null.");
             if (String.IsNullOrWhiteSpace(dto.Username) ||
                 String.IsNullOrWhiteSpace(dto.Email))
@@ -65,17 +84,13 @@ namespace SC.Api.Controllers
             if (!Enum.IsDefined(typeof(UserRoles), dto.UserRole))
                 return BadRequest($"Enum {nameof(UserRoles)} does not have a defined value of {dto.UserRole}.");
 
-
             var user = await _userRepository.GetAsync(id);
-            if(user == null)
+            if (user == null)
                 return NotFound($"Given {nameof(User)} ID does not exist in the database.");
 
-            //ako bi postojale sezone, pa bi se na kraju svake sezone resetovao elo, ovo bi bilo lose...
             if (user.Elo != null && dto.Elo == null)
                 return BadRequest($"User already has a set elo. It can only be reset to 0 now.");
 
-            
-            
             try
             {
                 if (user.Username != dto.Username || user.Email != dto.Email)
@@ -91,15 +106,11 @@ namespace SC.Api.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 if (await UserExists(id) == false)
-                {
                     return NotFound($"{nameof(User)} with the ID {id} does not exist");
-                }
                 else
-                {
                     throw;
-                }
             }
-            catch(ArgumentNullException e)
+            catch (ArgumentNullException e)
             {
                 return BadRequest(e.Message);
             }
@@ -107,52 +118,17 @@ namespace SC.Api.Controllers
             return NoContent();
         }
 
-        //Dodavanje bi trebalo iskljucivo preko AuthControllera da se radi
-        // POST: api/Users
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        
-        //[HttpPost]
-        //public async Task<ActionResult<User>> PostUserAsync(UserCreateDTO dto)
-        //{
-        //    if (dto == null)
-        //        return BadRequest("DTO is null");
-        //    if(!await _userRepository.IsUniqueUsernameOrEmailAsync(dto.Username,dto.Email))
-        //        return BadRequest($"Username or email is already taken.");
-
-
-        //    try
-        //    {
-        //        var user = new User {
-        //            Username=dto.Username,
-        //            Email = dto.Email,
-        //            Datecreated= DateOnly.FromDateTime(DateTime.Now),
-        //            Elo = null,
-                    
-        //        };
-
-        //        _userRepository.Add(user);
-        //        await _userRepository.SaveChangesAsync();
-
-        //        return CreatedAtAction("GetUser", new { id = user.UsersId }, user);
-        //    }
-        //    catch(Exception e)
-        //    {
-        //        return BadRequest(e.Message);
-        //    }
-        //}
-
+        // ⬇️ IZMENJENO: :int constraint
         // DELETE: api/Users/5
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteUserAsync(int id)
         {
-            if(id<=0)
+            if (id <= 0)
                 return BadRequest("ID cannot be negative or 0.");
 
             var user = await _userRepository.GetAsync(id);
             if (user == null)
-            {
                 return NotFound($"{nameof(User)} with ID {id} was not found.");
-            }
 
             _userRepository.Delete(user);
             await _userRepository.SaveChangesAsync();
@@ -172,7 +148,7 @@ namespace SC.Api.Controllers
         [HttpGet("loaded-user/{id}/{history}/{stats}")]
         public async Task<ActionResult<LoadedUserDTO>> GetLoadedUser(int id, bool history, bool stats)
         {
-            if(id<=0)
+            if (id <= 0)
                 return BadRequest("ID cannot be negative or 0.");
             var user = await _userRepository.GetUserWithLoadedPropertiesAsync(id, history, stats);
 
@@ -180,7 +156,7 @@ namespace SC.Api.Controllers
                 return NotFound($"{nameof(User)} with ID {id} was not found.");
 
             List<GamesHistoryDTO>? historyDTO = null;
-            if(history)
+            if (history)
             {
                 historyDTO = user.GamePlayers.Select(gp => new GamesHistoryDTO
                 {
@@ -192,7 +168,7 @@ namespace SC.Api.Controllers
             }
 
             List<UserStatsDTO>? statsDTO = null;
-            if(stats)
+            if (stats)
             {
                 statsDTO = user.UserStats.Select(s => new UserStatsDTO
                 {
@@ -231,16 +207,15 @@ namespace SC.Api.Controllers
                 return BadRequest("All DTO properties are null. Atleast 1 must have a non null value");
             if (dto.Elo.HasValue && dto.Elo <= 0)
                 return BadRequest("Elo must be positive");
-            if(dto.Role.HasValue && !Enum.IsDefined(typeof(UserRoles),dto.Role))
+            if (dto.Role.HasValue && !Enum.IsDefined(typeof(UserRoles), dto.Role))
                 return BadRequest($"{dto.Role} value is not defined for enum ${nameof(UserRoles)}");
 
             try
             {
                 var list = await _userRepository.FilterUsersAsync(dto.DateCreated, dto.DateBefore, dto.Elo, dto.EloBigger, dto.Role);
-
                 return Ok(list.Select(MapToDto));
             }
-            catch(ArgumentNullException e)
+            catch (ArgumentNullException e)
             {
                 return BadRequest(e.Message);
             }

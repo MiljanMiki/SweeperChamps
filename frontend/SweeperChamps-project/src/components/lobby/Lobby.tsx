@@ -64,7 +64,15 @@ const Lobby: React.FC = () => {
         {state === "disconnected" && "🔴 Disconnected"}
       </div>
 
-      <p>Welcome, {user?.username}</p>
+      <p>
+          Welcome,{" "}
+          <span
+            className="lobby__profile-link"
+            onClick={() => navigate(`/profile/${user?.username}`)}
+          >
+            {user?.username}
+          </span>
+        </p>
 
       {error && <div className="lobby__error">{error}</div>}
 

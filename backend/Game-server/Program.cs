@@ -111,5 +111,22 @@ app.MapGet("/internal/active-game/{playerId:int}", (int playerId, IGameStateMana
     }
     return Results.Ok(new { hasActiveGame = false, gameId = (int?)null });
 });
+app.MapGet("/internal/all-active-games", (IGameStateManager mgr) =>
+{
+    var games = mgr.GetAllGames()
+        .Select(g => new
+        {
+            gameId = g.GameId,
+            playerCount = g.Players.Count,
+            players = g.Players.Select(p => new
+            {
+                playerId = p.PlayerId,
+                teamColor = p.TeamColor.ToString()
+            })
+        })
+        .ToList();
+
+    return Results.Ok(games);
+});
 
 app.Run();
